@@ -1,0 +1,85 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2026 Timofej Luitle
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Perform Nextcloud installation tasks
+  when: nextcloud_enabled | bool
+  tags:
+    - setup-all
+    - setup-nextcloud
+    - install-all
+    - install-nextcloud
+  block:
+    - name: Validate Nextcloud configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Install Nextcloud
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
+
+- name: Perform Nextcloud occ command tasks
+  when: nextcloud_enabled | bool
+  tags:
+    - occ-nextcloud
+  block:
+    - name: Run Nextcloud occ command
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/occ.yml"
+
+- name: Perform Nextcloud server status query tasks
+  when: nextcloud_enabled | bool
+  tags:
+    - query-status-nextcloud
+  block:
+    - name: Query the Nextcloud server status
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/query_status.yml"
+
+- name: Perform mimetype migration tasks for Nextcloud
+  when: nextcloud_enabled | bool
+  tags:
+    - mimetype-migrations-nextcloud
+  block:
+    - name: Run mimetype migrations on Nextcloud
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/mimetype_migrations.yml"
+
+- name: Perform OIDC configuration task for Nextcloud OIDC Provider app
+  when: nextcloud_enabled | bool and nextcloud_app_oidc_enabled | bool
+  tags:
+    - configure-oidc-provider-nextcloud
+  block:
+    - name: Configure OIDC Provider app with defined OIDC clients
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/oidc.yml"
+
+- name: Perform LDAP configuration tasks for Nextcloud
+  when: nextcloud_enabled | bool
+  tags:
+    - set-ldap-config-nextcloud
+  block:
+    - name: Run LDAP configuration tasks based on Nextcloud AIO stack's default settings
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/ldap.yml"
+
+- name: Perform Collabora Online Development Edition installation tasks for Nextcloud
+  when: nextcloud_enabled | bool
+  tags:
+    - install-nextcloud-app-collabora
+  block:
+    - name: Install Collabola Online as Office application on Nextcloud
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/app_install_collabora.yml"
+
+- name: Perform Nextcloud configuration adjustment tasks
+  when: nextcloud_enabled | bool
+  tags:
+    - adjust-nextcloud-config
+  block:
+    - name: Validate Nextcloud configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
+    - name: Adjust Nextcloud configuration
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/adjust_config.yml"
+
+- name: Perform Nextcloud uninstallation tasks
+  when: not nextcloud_enabled | bool
+  tags:
+    - setup-all
+    - setup-nextcloud
+  block:
+    - name: Uninstall Nextcloud
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"

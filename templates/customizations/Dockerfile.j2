@@ -1,0 +1,13 @@
+{#
+SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+FROM {{ nextcloud_container_image }}
+
+{% if nextcloud_container_image_customizations_packages_to_install | length > 0 %}
+RUN apt -y update && apt -y install {{ nextcloud_container_image_customizations_packages_to_install | join(' ') }} && rm -rf /var/lib/apt/lists/*
+{% endif %}
+
+{{ nextcloud_container_image_customizations_dockerfile_body_custom }}
