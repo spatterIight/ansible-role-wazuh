@@ -1,0 +1,21 @@
+# SPDX-FileCopyrightText: 2025 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Check existence of {{ wazuh_unit_name }}
+  ansible.builtin.stat:
+    path: "{{ devture_systemd_docker_base_systemd_path }}/{{ wazuh_unit_name }}"
+  register: wazuh_unit_stat
+
+- name: Stop and disable {{ wazuh_unit_name }}
+  when: wazuh_unit_stat.stat.exists | bool
+  ansible.builtin.service:
+    name: "{{ wazuh_unit_name }}"
+    state: stopped
+    enabled: false
+
+- name: Remove {{ wazuh_unit_name }}
+  ansible.builtin.file:
+    path: "{{ devture_systemd_docker_base_systemd_path }}/{{ wazuh_unit_name }}"
+    state: absent

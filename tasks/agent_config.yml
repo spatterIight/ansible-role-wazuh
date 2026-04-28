@@ -1,0 +1,68 @@
+# SPDX-FileCopyrightText: 2025 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Wazuh agent enrollment password file is present
+  when: wazuh_enrollment_password | length > 0
+  no_log: "{{ wazuh_no_log }}"
+  ansible.builtin.copy:
+    content: "{{ wazuh_enrollment_password }}"
+    dest: "{{ wazuh_data_path }}/manager/etc/authd.pass"
+    mode: "0640"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  register: wazuh_authd_pass_present_result
+
+- name: Ensure Wazuh agent enrollment password file is absent
+  when: wazuh_enrollment_password | length == 0
+  ansible.builtin.file:
+    path: "{{ wazuh_data_path }}/manager/etc/authd.pass"
+    state: absent
+  register: wazuh_authd_pass_absent_result
+
+- name: Ensure Wazuh agent.conf is installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/agent_config/agent.conf.j2"
+    dest: "{{ wazuh_data_path }}/manager/etc/shared/default/agent.conf"
+    mode: "0640"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  register: wazuh_agent_conf_result
+
+- name: Ensure Wazuh custom rule files are installed
+  ansible.builtin.copy:
+    content: "{{ item.contents }}"
+    dest: "{{ wazuh_data_path }}/manager/etc/rules/{{ item.file }}"
+    mode: "0640"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  with_items: "{{ wazuh_rules }}"
+  register: wazuh_rules_result
+
+- name: Update Wazuh manager restart-necessary fact for agent config changes
+  ansible.builtin.set_fact:
+    wazuh_manager_restart_necessary: >-
+      {{
+        wazuh_manager_restart_necessary
+        or (wazuh_authd_pass_present_result.changed | default(false))
+        or (wazuh_authd_pass_absent_result.changed | default(false))
+        or wazuh_agent_conf_result.changed
+        or (wazuh_rules_result.results | selectattr('changed') | list | length > 0)
+      }}
+
+- name: Notify about Wazuh manager needing restart after agent config changes
+  when: >-
+    (wazuh_authd_pass_present_result.changed | default(false))
+    or (wazuh_authd_pass_absent_result.changed | default(false))
+    or wazuh_agent_conf_result.changed
+    or (wazuh_rules_result.results | selectattr('changed') | list | length > 0)
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: Wazuh agent configuration or rules have changed. Restart the `wazuh-manager.service` systemd service to apply changes."
+        ]
+      }}

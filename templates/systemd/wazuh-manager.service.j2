@@ -1,0 +1,88 @@
+{#
+SPDX-FileCopyrightText: 2025 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+[Unit]
+Description=Wazuh Manager ({{ wazuh_manager_identifier }})
+{% for service in wazuh_manager_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in wazuh_manager_systemd_wanted_services_list %}
+Wants={{ service }}
+{% endfor %}
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment="HOME={{ devture_systemd_docker_base_systemd_unit_home_path }}"
+ExecStartPre={{ devture_systemd_docker_base_host_command_sh }} -c 'i=0; while [ "$i" -lt {{ wazuh_manager_container_cleanup_timeout_seconds }} ]; do {{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wazuh_manager_container_stop_grace_time_seconds }} {{ wazuh_manager_identifier }} >/dev/null 2>&1 || true; {{ devture_systemd_docker_base_host_command_docker }} rm -f {{ wazuh_manager_identifier }} >/dev/null 2>&1 || true; if {{ devture_systemd_docker_base_host_command_docker }} container inspect {{ wazuh_manager_identifier }} >/dev/null 2>&1; then i=$((i + 1)); sleep {{ wazuh_manager_container_cleanup_retry_delay_seconds }}; continue; fi; if {{ devture_systemd_docker_base_host_command_docker }} info >/dev/null 2>&1; then exit 0; fi; echo "Failed to query Docker daemon while cleaning up {{ wazuh_manager_identifier }}" >&2; exit 1; done; echo "Failed to remove stale container {{ wazuh_manager_identifier }} after {{ wazuh_manager_container_cleanup_timeout_seconds }} attempts" >&2; exit 1'
+
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
+      --rm \
+      --name={{ wazuh_manager_identifier }} \
+      --log-driver=none \
+      --network={{ wazuh_container_network }} \
+      --network-alias=wazuh.manager \
+      --hostname=wazuh.manager \
+      --ulimit memlock=-1:-1 \
+      --ulimit nofile=655360:655360 \
+      {% if wazuh_manager_agent_host_bind_port %}
+      -p {{ wazuh_manager_agent_host_bind_port }}:{{ wazuh_manager_agent_port }}/tcp \
+      {% endif %}
+      {% if wazuh_manager_authd_host_bind_port %}
+      -p {{ wazuh_manager_authd_host_bind_port }}:{{ wazuh_manager_authd_port }}/tcp \
+      {% endif %}
+      {% if wazuh_manager_syslog_host_bind_port %}
+      -p {{ wazuh_manager_syslog_host_bind_port }}:{{ wazuh_manager_syslog_port }}/udp \
+      {% endif %}
+      {% if wazuh_manager_api_host_bind_port %}
+      -p {{ wazuh_manager_api_host_bind_port }}:{{ wazuh_manager_api_port }}/tcp \
+      {% endif %}
+      --env-file={{ wazuh_base_path }}/manager.env \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/api_configuration,dst=/var/ossec/api/configuration \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/etc,dst=/var/ossec/etc \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/logs,dst=/var/ossec/logs \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/queue,dst=/var/ossec/queue \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/var_multigroups,dst=/var/ossec/var/multigroups \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/integrations,dst=/var/ossec/integrations \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/active_response,dst=/var/ossec/active-response/bin \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/agentless,dst=/var/ossec/agentless \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/wodles,dst=/var/ossec/wodles \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/filebeat_etc,dst=/etc/filebeat \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/filebeat_var,dst=/var/lib/filebeat \
+      --mount type=bind,src={{ wazuh_certs_path }}/manager/root-ca-manager.pem,dst=/etc/ssl/root-ca.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/manager/wazuh.manager.pem,dst=/etc/ssl/filebeat.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/manager/wazuh.manager-key.pem,dst=/etc/ssl/filebeat.key,readonly \
+      --mount type=bind,src={{ wazuh_data_path }}/manager/wazuh_manager.conf,dst=/wazuh-config-mount/etc/ossec.conf,readonly \
+      {% if wazuh_manager_container_memory_limit != '' %}
+      --memory={{ wazuh_manager_container_memory_limit }} \
+      {% endif %}
+      {% if wazuh_manager_container_memory_swap_limit != '' %}
+      --memory-swap={{ wazuh_manager_container_memory_swap_limit }} \
+      {% endif %}
+      {% for volume in wazuh_manager_container_additional_volumes %}
+      --mount type=bind,src={{ volume.src }},dst={{ volume.dst }}{{ (',readonly' if volume.readonly | default(false) else '') }} \
+      {% endfor %}
+      {% if wazuh_manager_container_extra_arguments | length > 0 %}
+      {{ wazuh_manager_container_extra_arguments | join(' ') }} \
+      {% endif %}
+      {{ wazuh_manager_container_image }}
+
+{% for network in wazuh_manager_container_additional_networks %}
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} network connect {{ network }} {{ wazuh_manager_identifier }}
+{% endfor %}
+
+ExecStart={{ devture_systemd_docker_base_host_command_docker }} start --attach {{ wazuh_manager_identifier }}
+
+ExecStop=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wazuh_manager_container_stop_grace_time_seconds }} {{ wazuh_manager_identifier }} 2>/dev/null || true'
+ExecStop=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} rm {{ wazuh_manager_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ wazuh_manager_identifier }}
+
+[Install]
+WantedBy=multi-user.target

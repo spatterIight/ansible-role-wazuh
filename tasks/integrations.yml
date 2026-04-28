@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: 2025 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Wazuh custom integrations are installed
+  ansible.builtin.copy:
+    src: "{{ item.src }}"
+    dest: "{{ wazuh_data_path }}/manager/integrations/{{ item.name }}"
+    mode: "{{ item.mode | default('0750') }}"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  with_items: "{{ wazuh_integrations }}"
+  register: wazuh_integrations_result
+
+- name: Update Wazuh manager restart-necessary fact for integration changes
+  when: wazuh_integrations_result.results | selectattr('changed') | list | length > 0
+  ansible.builtin.set_fact:
+    wazuh_manager_restart_necessary: true
+
+- name: Notify about Wazuh manager needing restart after integration changes
+  when: wazuh_integrations_result.results | selectattr('changed') | list | length > 0
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: Wazuh custom integrations have changed. Restart the `wazuh-manager.service` systemd service to apply changes."
+        ]
+      }}

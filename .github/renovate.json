@@ -22,8 +22,14 @@
     },
     {
       "matchDatasources": ["docker"],
-      "matchPackageNames": ["library/nextcloud"],
-      "versioning": "regex:^(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-apache$"
+      "matchPackageNames": [
+        "wazuh/wazuh-manager",
+        "wazuh/wazuh-indexer",
+        "wazuh/wazuh-dashboard",
+        "wazuh/wazuh-certs-generator"
+      ],
+      "groupName": "wazuh docker images",
+      "groupSlug": "wazuh"
     }
   ],
   "customManagers": [

@@ -1,0 +1,36 @@
+# SPDX-FileCopyrightText: 2025 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Wazuh base paths exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+  with_items:
+    - "{{ wazuh_base_path }}"
+    - "{{ wazuh_data_path }}"
+    - "{{ wazuh_certs_path }}"
+
+- name: Ensure Wazuh container network is created via community.docker.docker_network
+  when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
+  community.docker.docker_network:
+    enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
+    name: "{{ wazuh_container_network }}"
+    driver: bridge
+    driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
+
+- name: Ensure Wazuh container network is created via ansible.builtin.command
+  when: devture_systemd_docker_base_container_network_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ devture_systemd_docker_base_host_command_docker }} network create
+      {% if devture_systemd_docker_base_ipv6_enabled %}--ipv6{% endif %}
+      {{ devture_systemd_docker_base_container_networks_driver_options_string }}
+      {{ wazuh_container_network }}
+  register: wazuh_network_creation_result
+  changed_when: wazuh_network_creation_result.rc == 0
+  failed_when: wazuh_network_creation_result.rc != 0 and 'already exists' not in wazuh_network_creation_result.stderr

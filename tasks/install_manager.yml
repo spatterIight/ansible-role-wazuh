@@ -1,0 +1,126 @@
+# SPDX-FileCopyrightText: 2025 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Wazuh manager data directories exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  with_items:
+    - "{{ wazuh_data_path }}/manager"
+    - "{{ wazuh_data_path }}/manager/api_configuration"
+    - "{{ wazuh_data_path }}/manager/etc"
+    - "{{ wazuh_data_path }}/manager/etc/rules"
+    - "{{ wazuh_data_path }}/manager/etc/shared"
+    - "{{ wazuh_data_path }}/manager/etc/shared/default"
+    - "{{ wazuh_data_path }}/manager/logs"
+    - "{{ wazuh_data_path }}/manager/queue"
+    - "{{ wazuh_data_path }}/manager/var_multigroups"
+    - "{{ wazuh_data_path }}/manager/integrations"
+    - "{{ wazuh_data_path }}/manager/active_response"
+    - "{{ wazuh_data_path }}/manager/agentless"
+    - "{{ wazuh_data_path }}/manager/wodles"
+    - "{{ wazuh_data_path }}/manager/filebeat_etc"
+    - "{{ wazuh_data_path }}/manager/filebeat_var"
+
+- name: Ensure Wazuh manager temporary configuration directory exists
+  ansible.builtin.tempfile:
+    state: directory
+    suffix: wazuh-manager
+  changed_when: false
+  register: wazuh_manager_tempdir
+
+- name: Copy Wazuh manager default ossec.conf for customization
+  ansible.builtin.copy:
+    src: "{{ role_path }}/files/conf/manager/wazuh_manager.conf"
+    dest: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
+    mode: "0640"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  changed_when: false
+
+- name: Ensure Wazuh manager ossec.conf has the defined adjustments
+  no_log: "{{ wazuh_no_log }}"
+  community.general.xml:
+    path: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
+    xpath: "{{ item.xpath }}"
+    value: "{{ item.value | default(omit) }}"
+    state: "{{ item.state | default('present') }}"
+    pretty_print: "{{ item.pretty_print | default(true) }}"
+  changed_when: false
+  with_items: "{{ wazuh_manager_ossec_xml_replacements }}"
+
+- name: Ensure Wazuh manager ossec.conf is installed
+  ansible.builtin.copy:
+    src: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
+    dest: "{{ wazuh_data_path }}/manager/wazuh_manager.conf"
+    remote_src: true
+    mode: "0640"
+    owner: "{{ wazuh_manager_uid }}"
+    group: "{{ wazuh_manager_gid }}"
+  register: wazuh_manager_config_result
+
+- name: Ensure Wazuh manager environment file is installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/manager/env.j2"
+    dest: "{{ wazuh_base_path }}/manager.env"
+    mode: "0600"
+    owner: root
+    group: root
+  no_log: "{{ wazuh_no_log }}"
+  register: wazuh_manager_env_result
+
+- name: Ensure Wazuh manager container image is pulled via community.docker.docker_image
+  when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
+  community.docker.docker_image:
+    name: "{{ wazuh_manager_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+    force_source: "{{ wazuh_manager_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else wazuh_manager_container_image_force_pull }}"
+  register: result
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: result is not failed
+
+- name: Ensure Wazuh manager container image is pulled via ansible.builtin.command
+  when: devture_systemd_docker_base_container_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ wazuh_manager_container_image }}"
+  register: result
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: result is not failed
+  changed_when: "'Downloaded newer image' in result.stdout"
+
+- name: Ensure Wazuh manager systemd service is installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/systemd/wazuh-manager.service.j2"
+    dest: "{{ devture_systemd_docker_base_systemd_path }}/wazuh-manager.service"
+    mode: "0644"
+  register: wazuh_manager_systemd_result
+
+- name: Ensure Wazuh manager systemd service is enabled
+  ansible.builtin.systemd:
+    name: wazuh-manager.service
+    enabled: true
+    daemon_reload: true
+
+- name: Set Wazuh manager restart-necessary fact
+  ansible.builtin.set_fact:
+    wazuh_manager_restart_necessary: "{{ wazuh_manager_config_result.changed or wazuh_manager_env_result.changed or wazuh_manager_systemd_result.changed }}"
+
+- name: Notify about Wazuh manager needing restart
+  when: wazuh_manager_restart_necessary | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: The Wazuh manager configuration has changed. Restart the `wazuh-manager.service` systemd service to apply changes."
+        ]
+      }}

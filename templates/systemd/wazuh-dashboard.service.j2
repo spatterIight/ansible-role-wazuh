@@ -1,0 +1,73 @@
+{#
+SPDX-FileCopyrightText: 2025 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+[Unit]
+Description=Wazuh Dashboard ({{ wazuh_dashboard_identifier }})
+{% for service in wazuh_dashboard_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in wazuh_dashboard_systemd_wanted_services_list %}
+Wants={{ service }}
+{% endfor %}
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment="HOME={{ devture_systemd_docker_base_systemd_unit_home_path }}"
+ExecStartPre={{ devture_systemd_docker_base_host_command_sh }} -c 'i=0; while [ "$i" -lt {{ wazuh_dashboard_container_cleanup_timeout_seconds }} ]; do {{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wazuh_dashboard_container_stop_grace_time_seconds }} {{ wazuh_dashboard_identifier }} >/dev/null 2>&1 || true; {{ devture_systemd_docker_base_host_command_docker }} rm -f {{ wazuh_dashboard_identifier }} >/dev/null 2>&1 || true; if {{ devture_systemd_docker_base_host_command_docker }} container inspect {{ wazuh_dashboard_identifier }} >/dev/null 2>&1; then i=$((i + 1)); sleep {{ wazuh_dashboard_container_cleanup_retry_delay_seconds }}; continue; fi; if {{ devture_systemd_docker_base_host_command_docker }} info >/dev/null 2>&1; then exit 0; fi; echo "Failed to query Docker daemon while cleaning up {{ wazuh_dashboard_identifier }}" >&2; exit 1; done; echo "Failed to remove stale container {{ wazuh_dashboard_identifier }} after {{ wazuh_dashboard_container_cleanup_timeout_seconds }} attempts" >&2; exit 1'
+
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
+      --rm \
+      --name={{ wazuh_dashboard_identifier }} \
+      --log-driver=none \
+      --network={{ wazuh_container_network }} \
+      --network-alias=wazuh.dashboard \
+      --hostname=wazuh.dashboard \
+      {% if wazuh_dashboard_http_host_bind_port %}
+      -p {{ wazuh_dashboard_http_host_bind_port }}:5601/tcp \
+      {% endif %}
+      --env-file={{ wazuh_base_path }}/dashboard.env \
+      --label-file={{ wazuh_base_path }}/dashboard.labels \
+      --mount type=bind,src={{ wazuh_data_path }}/dashboard/config/opensearch_dashboards.yml,dst=/usr/share/wazuh-dashboard/config/opensearch_dashboards.yml,readonly \
+      --mount type=bind,src={{ wazuh_data_path }}/dashboard/data,dst=/usr/share/wazuh-dashboard/data/wazuh \
+      --mount type=bind,src={{ wazuh_data_path }}/dashboard/data/config/wazuh.yml,dst=/usr/share/wazuh-dashboard/data/wazuh/config/wazuh.yml,readonly \
+      --mount type=bind,src={{ wazuh_data_path }}/dashboard/custom,dst=/usr/share/wazuh-dashboard/plugins/wazuh/public/assets/custom \
+      --mount type=bind,src={{ wazuh_certs_path }}/dashboard/wazuh.dashboard.pem,dst=/usr/share/wazuh-dashboard/certs/wazuh-dashboard.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/dashboard/wazuh.dashboard-key.pem,dst=/usr/share/wazuh-dashboard/certs/wazuh-dashboard-key.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/dashboard/root-ca.pem,dst=/usr/share/wazuh-dashboard/certs/root-ca.pem,readonly \
+      {% if wazuh_dashboard_container_memory_limit != '' %}
+      --memory={{ wazuh_dashboard_container_memory_limit }} \
+      {% endif %}
+      {% if wazuh_dashboard_container_memory_swap_limit != '' %}
+      --memory-swap={{ wazuh_dashboard_container_memory_swap_limit }} \
+      {% endif %}
+      {% for volume in wazuh_dashboard_container_additional_volumes %}
+      --mount type=bind,src={{ volume.src }},dst={{ volume.dst }}{{ (',readonly' if volume.readonly | default(false) else '') }} \
+      {% endfor %}
+      {% if wazuh_dashboard_container_extra_arguments | length > 0 %}
+      {{ wazuh_dashboard_container_extra_arguments | join(' ') }} \
+      {% endif %}
+      {{ wazuh_dashboard_container_image }}
+
+{% if wazuh_dashboard_container_labels_traefik_enabled and wazuh_dashboard_container_labels_traefik_docker_network %}
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} network connect {{ wazuh_dashboard_container_labels_traefik_docker_network }} {{ wazuh_dashboard_identifier }}
+{% endif %}
+{% for network in wazuh_dashboard_container_additional_networks %}
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} network connect {{ network }} {{ wazuh_dashboard_identifier }}
+{% endfor %}
+
+ExecStart={{ devture_systemd_docker_base_host_command_docker }} start --attach {{ wazuh_dashboard_identifier }}
+
+ExecStop=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wazuh_dashboard_container_stop_grace_time_seconds }} {{ wazuh_dashboard_identifier }} 2>/dev/null || true'
+ExecStop=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} rm {{ wazuh_dashboard_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ wazuh_dashboard_identifier }}
+
+[Install]
+WantedBy=multi-user.target

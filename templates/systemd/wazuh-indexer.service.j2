@@ -1,0 +1,75 @@
+{#
+SPDX-FileCopyrightText: 2025 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+[Unit]
+Description=Wazuh Indexer ({{ wazuh_identifier }})
+{% for service in wazuh_indexer_systemd_required_services_list %}
+Requires={{ service }}
+After={{ service }}
+{% endfor %}
+{% for service in wazuh_indexer_systemd_wanted_services_list %}
+Wants={{ service }}
+{% endfor %}
+DefaultDependencies=no
+
+[Service]
+Type=simple
+Environment="HOME={{ devture_systemd_docker_base_systemd_unit_home_path }}"
+ExecStartPre={{ devture_systemd_docker_base_host_command_sh }} -c 'i=0; while [ "$i" -lt {{ wazuh_indexer_container_cleanup_timeout_seconds }} ]; do {{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wazuh_indexer_container_stop_grace_time_seconds }} {{ wazuh_indexer_identifier }} >/dev/null 2>&1 || true; {{ devture_systemd_docker_base_host_command_docker }} rm -f {{ wazuh_indexer_identifier }} >/dev/null 2>&1 || true; if {{ devture_systemd_docker_base_host_command_docker }} container inspect {{ wazuh_indexer_identifier }} >/dev/null 2>&1; then i=$((i + 1)); sleep {{ wazuh_indexer_container_cleanup_retry_delay_seconds }}; continue; fi; if {{ devture_systemd_docker_base_host_command_docker }} info >/dev/null 2>&1; then exit 0; fi; echo "Failed to query Docker daemon while cleaning up {{ wazuh_indexer_identifier }}" >&2; exit 1; done; echo "Failed to remove stale container {{ wazuh_indexer_identifier }} after {{ wazuh_indexer_container_cleanup_timeout_seconds }} attempts" >&2; exit 1'
+
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
+      --rm \
+      --name={{ wazuh_indexer_identifier }} \
+      --log-driver=none \
+      --network={{ wazuh_container_network }} \
+      --network-alias=wazuh.indexer \
+      --hostname=wazuh.indexer \
+      --ulimit memlock=-1:-1 \
+      --ulimit nofile=65536:65536 \
+      {% if wazuh_indexer_http_host_bind_port %}
+      -p {{ wazuh_indexer_http_host_bind_port }}:9200/tcp \
+      {% endif %}
+      {% if wazuh_indexer_transport_host_bind_port %}
+      -p {{ wazuh_indexer_transport_host_bind_port }}:9300/tcp \
+      {% endif %}
+      --env-file={{ wazuh_base_path }}/indexer.env \
+      --mount type=bind,src={{ wazuh_data_path }}/indexer/data,dst=/var/lib/wazuh-indexer \
+      --mount type=bind,src={{ wazuh_data_path }}/indexer/config/opensearch.yml,dst=/usr/share/wazuh-indexer/config/opensearch.yml,readonly \
+      --mount type=bind,src={{ wazuh_data_path }}/indexer/config/internal_users.yml,dst=/usr/share/wazuh-indexer/config/opensearch-security/internal_users.yml,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/indexer/root-ca.pem,dst=/usr/share/wazuh-indexer/certs/root-ca.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/indexer/wazuh.indexer.pem,dst=/usr/share/wazuh-indexer/certs/wazuh.indexer.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/indexer/wazuh.indexer-key.pem,dst=/usr/share/wazuh-indexer/certs/wazuh.indexer.key,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/indexer/admin.pem,dst=/usr/share/wazuh-indexer/certs/admin.pem,readonly \
+      --mount type=bind,src={{ wazuh_certs_path }}/indexer/admin-key.pem,dst=/usr/share/wazuh-indexer/certs/admin-key.pem,readonly \
+      {% if wazuh_indexer_container_memory_limit != '' %}
+      --memory={{ wazuh_indexer_container_memory_limit }} \
+      {% endif %}
+      {% if wazuh_indexer_container_memory_swap_limit != '' %}
+      --memory-swap={{ wazuh_indexer_container_memory_swap_limit }} \
+      {% endif %}
+      {% for volume in wazuh_indexer_container_additional_volumes %}
+      --mount type=bind,src={{ volume.src }},dst={{ volume.dst }}{{ (',readonly' if volume.readonly | default(false) else '') }} \
+      {% endfor %}
+      {% if wazuh_indexer_container_extra_arguments | length > 0 %}
+      {{ wazuh_indexer_container_extra_arguments | join(' ') }} \
+      {% endif %}
+      {{ wazuh_indexer_container_image }}
+
+{% for network in wazuh_indexer_container_additional_networks %}
+ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} network connect {{ network }} {{ wazuh_indexer_identifier }}
+{% endfor %}
+
+ExecStart={{ devture_systemd_docker_base_host_command_docker }} start --attach {{ wazuh_indexer_identifier }}
+
+ExecStop=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} stop -t {{ wazuh_indexer_container_stop_grace_time_seconds }} {{ wazuh_indexer_identifier }} 2>/dev/null || true'
+ExecStop=-{{ devture_systemd_docker_base_host_command_sh }} -c '{{ devture_systemd_docker_base_host_command_docker }} rm {{ wazuh_indexer_identifier }} 2>/dev/null || true'
+
+Restart=always
+RestartSec=30
+SyslogIdentifier={{ wazuh_indexer_identifier }}
+
+[Install]
+WantedBy=multi-user.target

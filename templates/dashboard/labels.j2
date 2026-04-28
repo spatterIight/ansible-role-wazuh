@@ -1,0 +1,58 @@
+{#
+SPDX-FileCopyrightText: 2025 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+{% if wazuh_dashboard_container_labels_traefik_enabled %}
+traefik.enable=true
+
+{% if wazuh_dashboard_container_labels_traefik_docker_network %}
+traefik.docker.network={{ wazuh_dashboard_container_labels_traefik_docker_network }}
+{% endif %}
+
+{% set middlewares = [] %}
+
+{% if wazuh_dashboard_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ wazuh_dashboard_identifier }}-slashless-redirect.redirectregex.regex=^({{ wazuh_dashboard_container_labels_traefik_path_prefix | quote }})$
+traefik.http.middlewares.{{ wazuh_dashboard_identifier }}-slashless-redirect.redirectregex.replacement=${1}/
+{% set middlewares = middlewares + [wazuh_dashboard_identifier + '-slashless-redirect'] %}
+{% endif %}
+
+{% if wazuh_dashboard_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ wazuh_dashboard_identifier }}-strip-prefix.stripprefix.prefixes={{ wazuh_dashboard_container_labels_traefik_path_prefix }}
+{% set middlewares = middlewares + [wazuh_dashboard_identifier + '-strip-prefix'] %}
+{% endif %}
+
+{% if wazuh_dashboard_container_labels_traefik_additional_request_headers.keys() | length > 0 %}
+{% for name, value in wazuh_dashboard_container_labels_traefik_additional_request_headers.items() %}
+traefik.http.middlewares.{{ wazuh_dashboard_identifier }}-add-request-headers.headers.customrequestheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [wazuh_dashboard_identifier + '-add-request-headers'] %}
+{% endif %}
+
+{% if wazuh_dashboard_container_labels_traefik_additional_response_headers.keys() | length > 0 %}
+{% for name, value in wazuh_dashboard_container_labels_traefik_additional_response_headers.items() %}
+traefik.http.middlewares.{{ wazuh_dashboard_identifier }}-add-response-headers.headers.customresponseheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [wazuh_dashboard_identifier + '-add-response-headers'] %}
+{% endif %}
+
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.rule={{ wazuh_dashboard_container_labels_traefik_rule }}
+{% if wazuh_dashboard_container_labels_traefik_priority | int > 0 %}
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.priority={{ wazuh_dashboard_container_labels_traefik_priority }}
+{% endif %}
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.service={{ wazuh_dashboard_identifier }}
+{% if middlewares | length > 0 %}
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.middlewares={{ middlewares | join(',') }}
+{% endif %}
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.entrypoints={{ wazuh_dashboard_container_labels_traefik_entrypoints }}
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.tls={{ wazuh_dashboard_container_labels_traefik_tls | to_json }}
+{% if wazuh_dashboard_container_labels_traefik_tls %}
+traefik.http.routers.{{ wazuh_dashboard_identifier }}.tls.certResolver={{ wazuh_dashboard_container_labels_traefik_tls_certResolver }}
+{% endif %}
+
+traefik.http.services.{{ wazuh_dashboard_identifier }}.loadbalancer.server.port=5601
+{% endif %}
+
+{{ wazuh_dashboard_container_labels_additional_labels }}

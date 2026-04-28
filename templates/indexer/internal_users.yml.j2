@@ -1,0 +1,26 @@
+{#
+SPDX-FileCopyrightText: 2025 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+---
+# This is the internal user database
+# The hash value is a bcrypt hash and can be generated with plugin/tools/hash.sh
+
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+# Define your internal users here
+
+admin:
+  hash: "{{ wazuh_indexer_admin_password | password_hash('bcrypt', salt=wazuh_indexer_admin_password_salt) }}"
+  reserved: true
+  backend_roles:
+    - "admin"
+  description: "Demo admin user"
+
+kibanaserver:
+  hash: "{{ wazuh_indexer_kibanaserver_password | password_hash('bcrypt', salt=wazuh_indexer_kibanaserver_password_salt) }}"
+  reserved: true
+  description: "Demo kibanaserver user"

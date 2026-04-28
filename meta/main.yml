@@ -2,9 +2,9 @@
 galaxy_info:
   author: mash
   company: mash
-  role_name: nextcloud
+  role_name: wazuh
   namespace: mash
-  description: Nextcloud
+  description: Wazuh SIEM (manager + indexer + dashboard) as systemd-managed containers
   platforms:
     - name: Debian
       versions:

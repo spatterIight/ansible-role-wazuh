@@ -1,0 +1,138 @@
+# SPDX-FileCopyrightText: 2025 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Ensure Wazuh certs output directory exists
+  ansible.builtin.file:
+    path: "{{ wazuh_certs_path }}/output"
+    state: directory
+    mode: "0750"
+    owner: root
+    group: root
+
+- name: Check if Wazuh certificates have already been generated
+  ansible.builtin.stat:
+    path: "{{ wazuh_certs_path }}/.generated"
+  register: wazuh_certs_generated_stat
+
+- name: Generate Wazuh certificates
+  when: not wazuh_certs_generated_stat.stat.exists
+  block:
+    - name: Write certs.yml for certificate generation
+      ansible.builtin.copy:
+        content: "{{ wazuh_certs_yml | to_nice_yaml(indent=2) }}"
+        dest: "{{ wazuh_certs_path }}/certs.yml"
+        owner: root
+        group: root
+        mode: "0640"
+
+    - name: Install wazuh-certs-tool.sh
+      ansible.builtin.copy:
+        src: "{{ role_path }}/files/wazuh-certs-tool.sh"
+        dest: "{{ wazuh_certs_path }}/wazuh-certs-tool.sh"
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Install wazuh-certs-entrypoint.sh
+      ansible.builtin.copy:
+        src: "{{ role_path }}/files/wazuh-certs-entrypoint.sh"
+        dest: "{{ wazuh_certs_path }}/wazuh-certs-entrypoint.sh"
+        owner: root
+        group: root
+        mode: "0750"
+
+    - name: Pull wazuh-certs-generator image
+      community.docker.docker_image:
+        name: "{{ wazuh_certs_generator_container_image }}"
+        source: pull
+      retries: "{{ devture_playbook_help_container_retries_count }}"
+      delay: "{{ devture_playbook_help_container_retries_delay }}"
+
+    - name: Run wazuh-certs-generator one-shot container
+      community.docker.docker_container:
+        name: wazuh-certs-generator
+        image: "{{ wazuh_certs_generator_container_image }}"
+        entrypoint: /wazuh-certs-entrypoint.sh
+        auto_remove: true
+        detach: false
+        cleanup: true
+        mounts:
+          - type: bind
+            source: "{{ wazuh_certs_path }}/certs.yml"
+            target: /config/certs.yml
+            read_only: true
+          - type: bind
+            source: "{{ wazuh_certs_path }}/wazuh-certs-tool.sh"
+            target: /config/wazuh-certs-tool.sh
+            read_only: true
+          - type: bind
+            source: "{{ wazuh_certs_path }}/wazuh-certs-entrypoint.sh"
+            target: /wazuh-certs-entrypoint.sh
+            read_only: true
+          - type: bind
+            source: "{{ wazuh_certs_path }}/output"
+            target: /certificates
+
+    - name: Ensure per-component certificate directories exist
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "0750"
+        owner: root
+        group: root
+      with_items:
+        - "{{ wazuh_certs_path }}/manager"
+        - "{{ wazuh_certs_path }}/indexer"
+        - "{{ wazuh_certs_path }}/dashboard"
+
+    - name: Distribute manager certificates (owner 999:999)
+      ansible.builtin.copy:
+        src: "{{ wazuh_certs_path }}/output/{{ item.src }}"
+        dest: "{{ wazuh_certs_path }}/manager/{{ item.dest }}"
+        remote_src: true
+        owner: "{{ wazuh_manager_uid }}"
+        group: "{{ wazuh_manager_gid }}"
+        mode: "0640"
+      with_items:
+        - {src: root-ca.pem, dest: root-ca-manager.pem}
+        - {src: root-ca.key, dest: root-ca-manager.key}
+        - {src: wazuh.manager.pem, dest: wazuh.manager.pem}
+        - {src: wazuh.manager-key.pem, dest: wazuh.manager-key.pem}
+
+    - name: Distribute indexer certificates (owner 1000:1000)
+      ansible.builtin.copy:
+        src: "{{ wazuh_certs_path }}/output/{{ item }}"
+        dest: "{{ wazuh_certs_path }}/indexer/{{ item }}"
+        remote_src: true
+        owner: "{{ wazuh_uid }}"
+        group: "{{ wazuh_gid }}"
+        mode: "0640"
+      with_items:
+        - root-ca.pem
+        - wazuh.indexer.pem
+        - wazuh.indexer-key.pem
+        - admin.pem
+        - admin-key.pem
+
+    - name: Distribute dashboard certificates (owner 1000:1000)
+      ansible.builtin.copy:
+        src: "{{ wazuh_certs_path }}/output/{{ item }}"
+        dest: "{{ wazuh_certs_path }}/dashboard/{{ item }}"
+        remote_src: true
+        owner: "{{ wazuh_uid }}"
+        group: "{{ wazuh_gid }}"
+        mode: "0640"
+      with_items:
+        - root-ca.pem
+        - wazuh.dashboard.pem
+        - wazuh.dashboard-key.pem
+
+    - name: Mark Wazuh certificates as generated
+      ansible.builtin.file:
+        path: "{{ wazuh_certs_path }}/.generated"
+        state: touch
+        owner: root
+        group: root
+        mode: "0400"
