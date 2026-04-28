@@ -1,10 +1,8 @@
 ---
 galaxy_info:
-  author: mash
-  company: mash
+  author: spatterlight
   role_name: wazuh
-  namespace: mash
-  description: Wazuh SIEM (manager + indexer + dashboard) as systemd-managed containers
+  description: An Ansible role for installing Wazuh, an open source security platform
   platforms:
     - name: Debian
       versions:

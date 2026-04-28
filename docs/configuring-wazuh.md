@@ -1,74 +1,93 @@
 <!--
-SPDX-FileCopyrightText: 2025 spatterlight
+SPDX-FileCopyrightText: 2020 Aaron Raimist
+SPDX-FileCopyrightText: 2020 Chris van Dijk
+SPDX-FileCopyrightText: 2020 Dominik Zajac
+SPDX-FileCopyrightText: 2020 Mickaël Cornière
+SPDX-FileCopyrightText: 2020-2024 MDAD project contributors
+SPDX-FileCopyrightText: 2020-2025 Slavi Pantaleev
+SPDX-FileCopyrightText: 2022 François Darveau
+SPDX-FileCopyrightText: 2022 Julian Foad
+SPDX-FileCopyrightText: 2022 Warren Bailey
+SPDX-FileCopyrightText: 2023 Antonis Christofides
+SPDX-FileCopyrightText: 2023 Felix Stupp
+SPDX-FileCopyrightText: 2023 Julian-Samuel Gebühr
+SPDX-FileCopyrightText: 2023 Niels Bouma
+SPDX-FileCopyrightText: 2023 Pierre 'McFly' Marty
+SPDX-FileCopyrightText: 2023, 2024 Gergely Horváth
+SPDX-FileCopyrightText: 2023, 2024 MASH project contributors
+SPDX-FileCopyrightText: 2024 Philipp Homann
+SPDX-FileCopyrightText: 2024 Thomas Miceli
+SPDX-FileCopyrightText: 2024-2026 Suguru Hirahara
+SPDX-FileCopyrightText: 2025 IUCCA
+SPDX-FileCopyrightText: 2026 spatterlight
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# Configuring Wazuh
+# Setting up Wazuh
 
-## Quickstart
+This is an [Ansible](https://www.ansible.com/) role which installs [Wazuh](https://wazuh.com/) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
-A minimal inventory entry enabling all three components:
+Wazuh is an open source security platform .
+
+See the project's [documentation](https://documentation.wazuh.com/current/index.html) to learn what Wazuh does and why it might be useful to you.
+
+## Prerequisites
+
+To deploy Wazuh using this role it is necessary that:
+
+1. The [community.general](https://github.com/ansible-collections/community.general) collection be installed. This is needed to support modifying XML configuration files.
+
+## Adjusting the playbook configuration
+
+To enable Wazuh with this role, add the following configuration to your `vars.yml` file.
+
+**Note**: the path should be something like `inventory/host_vars/mash.example.com/vars.yml` if you use the [MASH Ansible playbook](https://github.com/mother-of-all-self-hosting/mash-playbook).
 
 ```yaml
+########################################################################
+#                                                                      #
+# wazuh                                                                #
+#                                                                      #
+########################################################################
+
 wazuh_enabled: true
 
-# Required passwords
-wazuh_indexer_admin_password: "your-admin-password"
-wazuh_indexer_kibanaserver_password: "your-kibanaserver-password"
-wazuh_indexer_admin_password_salt: "your22charsalthere123a"
-wazuh_indexer_kibanaserver_password_salt: "another22charsalt12345"
-wazuh_manager_api_password: "your-api-password"
+# Passwords used to authenticate with the dashboard (former), and for containers to authenticate between each other (latter two)
+# Generate one using `pwgen -s 64 1`, or some other way
+wazuh_indexer_admin_password: ""
+wazuh_indexer_kibanaserver_password: ""
+wazuh_manager_api_password: ""
 
-# Dashboard Traefik configuration
-wazuh_dashboard_container_labels_traefik_enabled: true
-wazuh_dashboard_container_labels_traefik_docker_network: traefik
-wazuh_dashboard_container_labels_traefik_hostname: wazuh.example.com
+# Salt's used to hash the above passwords idempotently. Must be exactly 22 characters.
+# Generate one using `pwgen -s 22 1`, or some other way
+wazuh_indexer_admin_password_salt: ""
+wazuh_indexer_kibanaserver_password_salt: ""
+
+########################################################################
+#                                                                      #
+# /wazuh                                                               #
+#                                                                      #
+########################################################################
 ```
 
-Run with:
+## Installing
 
-```
-ansible-playbook --tags setup-wazuh site.yml
-```
+After configuring the playbook, run the installation command of your playbook as below:
 
-Then restart the services:
-
-```
-systemctl restart wazuh-indexer wazuh-manager wazuh-dashboard
+```sh
+ansible-playbook -i inventory/hosts setup.yml --tags=setup-all,start
 ```
 
-## Generating passwords and salts
+If you use the MASH playbook, the shortcut commands with the [`just` program](https://github.com/mother-of-all-self-hosting/mash-playbook/blob/main/docs/just.md) are also available: `just install-all` or `just setup-all`
 
-Generate strong passwords using `pwgen`:
+## Usage
 
-```bash
-pwgen -ycnsB 24 --remove-chars='$&'
-```
+After running the command for installation, Wazuh becomes available at the specified hostname like `https://example.com`.
 
-**Bcrypt salts** are 22 characters long. They must contain only characters from the bcrypt alphabet (`./A-Za-z0-9`). The salts are not secret — they are stored in plaintext in the config. Set them once and keep them stable; changing a salt will change the bcrypt hash, requiring a manual password reset in OpenSearch.
+To get started, open the URL with a web browser to log in to the dashboard.
 
-Example salt generation:
-
-```bash
-python3 -c "import bcrypt; print(bcrypt.gensalt().decode())" | cut -c8-29
-```
-
-## Component flags
-
-Each component can be enabled or disabled independently:
-
-```yaml
-wazuh_manager_enabled: true   # default
-wazuh_indexer_enabled: true   # default
-wazuh_dashboard_enabled: true # default
-```
-
-Disabling the entire role:
-
-```yaml
-wazuh_enabled: false
-```
+To log in to the dashboard use the `admin` username and your `wazuh_indexer_admin_password` configured credential.
 
 ## External indexer mode
 
@@ -151,31 +170,10 @@ wazuh_manager_ossec_xml_replacements_custom:
     value: "alerts@example.com"
 ```
 
-## Indexer YAML customization
+## Troubleshooting
 
-Override any OpenSearch setting:
+User guide is available on [this page](https://documentation.wazuh.com/current/user-manual/wazuh-dashboard/troubleshooting.html).
 
-```yaml
-wazuh_indexer_opensearch_yml_extension_yaml: |
-  plugins.security.ssl.http.enabled: true
-```
+### Check the service's logs
 
-## Certificate regeneration
-
-Certificates are generated once and tracked by a sentinel file at `{{ wazuh_certs_path }}/.generated`. To regenerate:
-
-```bash
-rm /wazuh/certs/.generated
-# Then re-run the playbook
-ansible-playbook --tags setup-wazuh site.yml
-```
-
-After regeneration, restart all three services.
-
-## Version upgrade procedure
-
-1. Update `wazuh_version` in your inventory.
-2. Re-run the playbook: `ansible-playbook --tags setup-wazuh site.yml`.
-3. Restart services: `systemctl restart wazuh-indexer wazuh-manager wazuh-dashboard`.
-
-The upstream `wazuh_manager.conf` XML in `files/conf/manager/wazuh_manager.conf` is pinned at the version bundled with this role. After a major version bump, check upstream for config schema changes and update accordingly.
+You can find the logs in [systemd-journald](https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html) by logging in to the server with SSH and running `journalctl -fu wazuh` (or how you/your playbook named the service, e.g. `mash-wazuh`).

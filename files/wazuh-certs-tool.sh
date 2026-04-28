@@ -924,4 +924,3 @@ function common_checkYumLock() {
 }
 
 main "$@"
-

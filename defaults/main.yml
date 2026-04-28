@@ -1,4 +1,13 @@
-# SPDX-FileCopyrightText: 2025 spatterlight
+# SPDX-FileCopyrightText: 2023 Gergely Horváth
+# SPDX-FileCopyrightText: 2023, 2024 Nikita Chernyi
+# SPDX-FileCopyrightText: 2023-2025 MASH project contributors
+# SPDX-FileCopyrightText: 2023-2026 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2024 Julian-Samuel Gebühr
+# SPDX-FileCopyrightText: 2024 Philipp Homann
+# SPDX-FileCopyrightText: 2024 Sergio Durigan Junior
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2026 Timofej Luitle
+# SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -141,16 +150,15 @@ wazuh_indexer_container_image_force_pull: "{{ wazuh_indexer_container_image.ends
 
 wazuh_indexer_opensearch_java_opts: "-Xms1g -Xmx1g"
 
-# Required passwords
 wazuh_indexer_admin_password: ""
 wazuh_indexer_kibanaserver_password: ""
 
-# Bcrypt salts — plaintext, non-secret; set once and keep stable for idempotency.
-# Generate with: python3 -c "import bcrypt; print(bcrypt.gensalt(rounds=12).decode()[7:])"
 wazuh_indexer_admin_password_salt: ""
 wazuh_indexer_kibanaserver_password_salt: ""
 
-# Optional host port bindings — empty means only reachable on the docker network.
+# Controls whether the indexer container exposes its ports.
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:2586"), or empty string to not expose.
 wazuh_indexer_http_host_bind_port: ""
 wazuh_indexer_transport_host_bind_port: ""
 
