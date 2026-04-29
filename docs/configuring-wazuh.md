@@ -37,6 +37,7 @@ See the project's [documentation](https://documentation.wazuh.com/current/index.
 To deploy Wazuh using this role it is necessary that:
 
 1. The [community.general](https://github.com/ansible-collections/community.general) collection be installed. This is needed to support modifying XML configuration files.
+2. The [ansible.posix](https://github.com/ansible-collections/ansible.posix) collection be installed. This is needed to support modifying the sysctl vm.max_map_count setting.
 
 ## Adjusting the playbook configuration
 

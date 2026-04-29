@@ -1,0 +1,50 @@
+---
+- name: Apply devture base roles and Wazuh role
+  hosts: all
+  become: true
+  gather_facts: true
+  vars:
+    wazuh_indexer_admin_password: "WazuhTest1AdminPass!"
+    wazuh_indexer_kibanaserver_password: "WazuhTest1KibPass!"
+    wazuh_manager_api_password: "WazuhTest1ApiPass!"
+    wazuh_manager_indexer_password: "WazuhTest1AdminPass!"
+
+    # Exactly 22 chars from bcrypt alphabet [./a-zA-Z0-9]
+    wazuh_indexer_admin_password_salt: "mGVAFoAzmGVAFoAzmGVAFo"
+    wazuh_indexer_kibanaserver_password_salt: "nHWBGpBAnHWBGpBAnHWBGp"
+
+    wazuh_dashboard_container_labels_traefik_enabled: false
+    wazuh_dashboard_http_host_bind_port: "5601"
+
+    # Reduce JVM heap; default 1g/1g is too heavy for a molecule environment
+    wazuh_indexer_opensearch_java_opts: "-Xms512m -Xmx512m"
+
+    # Safety net for vars absent in older systemd_docker_base versions
+    devture_systemd_docker_base_container_cleanup_timeout_seconds: 15
+    devture_systemd_docker_base_container_cleanup_retry_delay_seconds: 1
+
+  roles:
+    - role: com.devture.ansible.role.playbook_help
+    - role: com.devture.ansible.role.systemd_docker_base
+    - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
+
+- name: Start Wazuh services
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Start wazuh-indexer service
+      ansible.builtin.systemd:
+        name: wazuh-indexer.service
+        state: started
+        daemon_reload: true
+
+    - name: Start wazuh-manager service
+      ansible.builtin.systemd:
+        name: wazuh-manager.service
+        state: started
+
+    - name: Start wazuh-dashboard service
+      ansible.builtin.systemd:
+        name: wazuh-dashboard.service
+        state: started

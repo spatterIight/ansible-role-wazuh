@@ -1,0 +1,72 @@
+---
+- name: Verify Wazuh services are running
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for wazuh-indexer to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: wazuh-indexer.service
+      register: indexer_service
+      until: indexer_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert wazuh-indexer is active
+      ansible.builtin.assert:
+        that: indexer_service.status.ActiveState == 'active'
+        fail_msg: "wazuh-indexer.service not active ({{ indexer_service.status.ActiveState }})"
+        success_msg: "wazuh-indexer.service is active"
+
+    - name: Wait for wazuh-manager to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: wazuh-manager.service
+      register: manager_service
+      until: manager_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert wazuh-manager is active
+      ansible.builtin.assert:
+        that: manager_service.status.ActiveState == 'active'
+        fail_msg: "wazuh-manager.service not active ({{ manager_service.status.ActiveState }})"
+        success_msg: "wazuh-manager.service is active"
+
+    - name: Wait for wazuh-dashboard to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: wazuh-dashboard.service
+      register: dashboard_service
+      until: dashboard_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert wazuh-dashboard is active
+      ansible.builtin.assert:
+        that: dashboard_service.status.ActiveState == 'active'
+        fail_msg: "wazuh-dashboard.service not active ({{ dashboard_service.status.ActiveState }})"
+        success_msg: "wazuh-dashboard.service is active"
+
+    - name: Wait for dashboard HTTPS endpoint to respond (up to 120s)
+      ansible.builtin.uri:
+        url: "https://localhost:5601/app/login"
+        method: GET
+        validate_certs: false
+        status_code: 200
+      register: dashboard_http
+      until: dashboard_http.status == 200
+      retries: 24
+      delay: 5
+
+    - name: Assert dashboard responds
+      ansible.builtin.assert:
+        that: dashboard_http.status == 200
+        fail_msg: "Dashboard did not respond ({{ dashboard_http.status | default('no response') }})"
+        success_msg: "Dashboard responded with 200"
+
+    - name: Show service status summary
+      ansible.builtin.debug:
+        msg:
+          - "wazuh-indexer: {{ indexer_service.status.ActiveState }}"
+          - "wazuh-manager: {{ manager_service.status.ActiveState }}"
+          - "wazuh-dashboard: {{ dashboard_service.status.ActiveState }}"
+          - "dashboard HTTP: {{ dashboard_http.status }}"
