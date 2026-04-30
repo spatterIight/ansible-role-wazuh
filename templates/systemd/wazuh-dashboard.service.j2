@@ -28,7 +28,7 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --network-alias=wazuh.dashboard \
       --hostname=wazuh.dashboard \
       {% if wazuh_dashboard_http_host_bind_port %}
-      -p {{ wazuh_dashboard_http_host_bind_port }}:5601/tcp \
+      -p {{ wazuh_dashboard_http_host_bind_port }}:{{ wazuh_dashboard_http_port }}/tcp \
       {% endif %}
       --env-file={{ wazuh_base_path }}/dashboard.env \
       --label-file={{ wazuh_base_path }}/dashboard.labels \

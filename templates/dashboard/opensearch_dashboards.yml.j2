@@ -4,7 +4,7 @@ SPDX-FileCopyrightText: 2026 spatterlight
 SPDX-License-Identifier: AGPL-3.0-or-later
 #}
 server.host: "0.0.0.0"
-server.port: 5601
+server.port: {{ wazuh_dashboard_http_port }}
 opensearch.hosts: "https://wazuh.indexer:9200"
 opensearch.ssl.verificationMode: "certificate"
 opensearch.requestHeadersWhitelist:

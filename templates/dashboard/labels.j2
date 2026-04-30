@@ -52,7 +52,7 @@ traefik.http.routers.{{ wazuh_dashboard_identifier }}.tls={{ wazuh_dashboard_con
 traefik.http.routers.{{ wazuh_dashboard_identifier }}.tls.certResolver={{ wazuh_dashboard_container_labels_traefik_tls_certResolver }}
 {% endif %}
 
-traefik.http.services.{{ wazuh_dashboard_identifier }}.loadbalancer.server.port=5601
+traefik.http.services.{{ wazuh_dashboard_identifier }}.loadbalancer.server.port={{ wazuh_dashboard_http_port }}
 {% endif %}
 
 {{ wazuh_dashboard_container_labels_additional_labels }}

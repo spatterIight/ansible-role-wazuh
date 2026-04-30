@@ -56,26 +56,41 @@ wazuh_manager_container_image: "{{ wazuh_manager_container_image_registry_prefix
 wazuh_manager_container_image_tag: "{{ wazuh_version }}"
 wazuh_manager_container_image_force_pull: "{{ wazuh_manager_container_image.endswith(':latest') }}"
 
-# Agent enrollment port (TCP). Leave wazuh_manager_agent_host_bind_port empty to not expose on host.
+# Specify how the container publishes its agent enrollment port (as defined by `wazuh_manager_agent_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:1514"), or empty string to not expose.
+wazuh_manager_agent_host_bind_port: ""
+
+# The port number in the container
 wazuh_manager_agent_port: 1514
-wazuh_manager_agent_host_bind_port: "{{ wazuh_manager_agent_port }}"
 
-# Agent registration port (TCP).
+# Specify how the container publishes its agent registration port (as defined by `wazuh_manager_authd_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:1515"), or empty string to not expose.
+wazuh_manager_authd_host_bind_port: ""
+
+# The port number in the container
 wazuh_manager_authd_port: 1515
-wazuh_manager_authd_host_bind_port: "{{ wazuh_manager_authd_port }}"
 
-# Syslog port (UDP).
+# Specify how the container publishes its syslog port (as defined by `wazuh_manager_syslog_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:514"), or empty string to not expose.
+wazuh_manager_syslog_host_bind_port: ""
+
 wazuh_manager_syslog_port: 514
-wazuh_manager_syslog_host_bind_port: "{{ wazuh_manager_syslog_port }}"
 
-# Manager REST API port (TCP).
+# Specify how the container publishes its REST API port (as defined by `wazuh_manager_api_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:55000"), or empty string to not expose.
+wazuh_manager_api_host_bind_port: ""
+
+# The port number in the container
 wazuh_manager_api_port: 55000
-wazuh_manager_api_host_bind_port: "{{ wazuh_manager_api_port }}"
 
 wazuh_manager_container_memory_limit: ""
 wazuh_manager_container_memory_swap_limit: ""
 
-# Indexer connection (used in env-file and ossec.conf XPath replacements)
+# Indexer connection (used in env-file and wazuh_manager.conf XPath replacements)
 wazuh_manager_indexer_url: "https://wazuh.indexer:9200"
 wazuh_manager_indexer_username: "admin"
 wazuh_manager_indexer_password: ""
@@ -86,14 +101,19 @@ wazuh_manager_api_password: ""
 
 wazuh_manager_filebeat_ssl_verification_mode: "full"
 
-# ossec.conf XPath replacements (C1 pattern — XML file only)
+# wazuh_manager_ossec_xml_replacements_custom contains a list of dictionaries of XPath expressions
+# This can be used to add, modify, or remove any property from the default 'wazuh_manager.conf' file
+#
+# See `wazuh_manager_ossec_xml_replacements_default` for an example of what can be defined here
+wazuh_manager_ossec_xml_replacements_custom: []
+
+# The default 'wazuh_manager.conf` replacements to make
 wazuh_manager_ossec_xml_replacements_default:
   - xpath: "/ossec_config/indexer/hosts/host"
     value: "{{ wazuh_manager_indexer_url }}"
+
   - xpath: "/ossec_config/auth/use_password"
     value: "{{ 'yes' if wazuh_enrollment_password | length > 0 else 'no' }}"
-
-wazuh_manager_ossec_xml_replacements_custom: []
 
 wazuh_manager_ossec_xml_replacements: "{{ wazuh_manager_ossec_xml_replacements_default + wazuh_manager_ossec_xml_replacements_custom }}"
 
@@ -103,15 +123,24 @@ wazuh_manager_systemd_required_services_list_default: "{{ [devture_systemd_docke
 wazuh_manager_systemd_required_services_list_auto: []
 wazuh_manager_systemd_required_services_list_custom: []
 
+# List of systemd services that the manager systemd service wants
 wazuh_manager_systemd_wanted_services_list: "{{ wazuh_manager_systemd_wanted_services_list_default + wazuh_manager_systemd_wanted_services_list_auto + wazuh_manager_systemd_wanted_services_list_custom }}"
 wazuh_manager_systemd_wanted_services_list_default: []
 wazuh_manager_systemd_wanted_services_list_auto: []
 wazuh_manager_systemd_wanted_services_list_custom: []
 
+# A list of additional container networks that the container would be connected to.
+# The role does not create these networks, so make sure they already exist.
+# Use this to expose this container to another reverse proxy, which runs in a different container network.
 wazuh_manager_container_additional_networks: "{{ wazuh_manager_container_additional_networks_auto + wazuh_manager_container_additional_networks_custom }}"
 wazuh_manager_container_additional_networks_auto: []
 wazuh_manager_container_additional_networks_custom: []
 
+# A list of additional "volumes" to mount in the container.
+# This list gets populated dynamically at runtime. You can provide a different default value,
+# if you wish to mount your own files into the container.
+# Contains definition objects like this: `{"type": "bind", "src": "/outside", "dst": "/inside", "options": "readonly"}.
+# See the `--mount` documentation for the `docker run` command.
 wazuh_manager_container_additional_volumes: "{{ wazuh_manager_container_additional_volumes_auto + wazuh_manager_container_additional_volumes_custom }}"
 wazuh_manager_container_additional_volumes_auto: []
 wazuh_manager_container_additional_volumes_custom: []
@@ -218,20 +247,30 @@ wazuh_indexer_internal_users_yml_extension: "{{ wazuh_indexer_internal_users_yml
 # You most likely don't need to touch this variable. Instead, see `wazuh_indexer_internal_users_yml_yaml`.
 wazuh_indexer_internal_users_yml: "{{ wazuh_indexer_internal_users_yml_yaml | from_yaml | combine(wazuh_indexer_internal_users_yml_extension, recursive=True) }}"
 
+# List of systemd services that the indexer systemd service depends on
 wazuh_indexer_systemd_required_services_list: "{{ wazuh_indexer_systemd_required_services_list_default + wazuh_indexer_systemd_required_services_list_auto + wazuh_indexer_systemd_required_services_list_custom }}"
 wazuh_indexer_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 wazuh_indexer_systemd_required_services_list_auto: []
 wazuh_indexer_systemd_required_services_list_custom: []
 
+# List of systemd services that the indexer systemd service wants
 wazuh_indexer_systemd_wanted_services_list: "{{ wazuh_indexer_systemd_wanted_services_list_default + wazuh_indexer_systemd_wanted_services_list_auto + wazuh_indexer_systemd_wanted_services_list_custom }}"
 wazuh_indexer_systemd_wanted_services_list_default: []
 wazuh_indexer_systemd_wanted_services_list_auto: []
 wazuh_indexer_systemd_wanted_services_list_custom: []
 
+# A list of additional container networks that the container would be connected to.
+# The role does not create these networks, so make sure they already exist.
+# Use this to expose this container to another reverse proxy, which runs in a different container network.
 wazuh_indexer_container_additional_networks: "{{ wazuh_indexer_container_additional_networks_auto + wazuh_indexer_container_additional_networks_custom }}"
 wazuh_indexer_container_additional_networks_auto: []
 wazuh_indexer_container_additional_networks_custom: []
 
+# A list of additional "volumes" to mount in the container.
+# This list gets populated dynamically at runtime. You can provide a different default value,
+# if you wish to mount your own files into the container.
+# Contains definition objects like this: `{"type": "bind", "src": "/outside", "dst": "/inside", "options": "readonly"}.
+# See the `--mount` documentation for the `docker run` command.
 wazuh_indexer_container_additional_volumes: "{{ wazuh_indexer_container_additional_volumes_auto + wazuh_indexer_container_additional_volumes_custom }}"
 wazuh_indexer_container_additional_volumes_auto: []
 wazuh_indexer_container_additional_volumes_custom: []
@@ -267,8 +306,14 @@ wazuh_dashboard_container_image: "{{ wazuh_dashboard_container_image_registry_pr
 wazuh_dashboard_container_image_tag: "{{ wazuh_version }}"
 wazuh_dashboard_container_image_force_pull: "{{ wazuh_dashboard_container_image.endswith(':latest') }}"
 
-# Optional host port binding — default empty since Traefik fronts the dashboard.
+# Specify how the container publishes its dashboard http port (as defined by `wazuh_dashboard_http_port`).
+#
+# Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:80"), or empty string to not expose.
 wazuh_dashboard_http_host_bind_port: ""
+
+# The port number in the container
+# TODO -> Make this actually do something
+wazuh_dashboard_http_port: 5601
 
 wazuh_dashboard_container_memory_limit: ""
 wazuh_dashboard_container_memory_swap_limit: ""
@@ -334,9 +379,10 @@ wazuh_dashboard_wazuh_yml_extension: "{{ wazuh_dashboard_wazuh_yml_extension_yam
 # You most likely don't need to touch this variable. Instead, see `wazuh_dashboard_wazuh_yml_yaml`.
 wazuh_dashboard_wazuh_yml: "{{ wazuh_dashboard_wazuh_yml_yaml | from_yaml | combine(wazuh_dashboard_wazuh_yml_extension, recursive=True) }}"
 
-# Traefik label variables — mirrors the nifi/MASH pattern.
-# wazuh_dashboard_container_labels_traefik_enabled gates the Traefik block inside labels.j2.
-# The labels file is always rendered and always passed via --label-file.
+# wazuh_dashboard_container_labels_traefik_enabled controls whether labels to assist a Traefik reverse-proxy will be attached to the container.
+# See `../templates/dashboard/labels.j2` for details.
+#
+# To inject your own other container labels, see `wazuh_dashboard_container_labels_additional_labels_custom`.
 wazuh_dashboard_container_labels_traefik_enabled: true
 wazuh_dashboard_container_labels_traefik_docker_network: ""
 wazuh_dashboard_container_labels_traefik_hostname: ""
@@ -346,6 +392,9 @@ wazuh_dashboard_container_labels_traefik_priority: 0
 wazuh_dashboard_container_labels_traefik_entrypoints: web-secure
 wazuh_dashboard_container_labels_traefik_tls: "{{ wazuh_dashboard_container_labels_traefik_entrypoints != 'web' }}"
 wazuh_dashboard_container_labels_traefik_tls_certResolver: default # noqa var-naming
+
+# Controls which additional headers to attach to all HTTP requests.
+# To add your own custom request headers, use `wazuh_dashboard_container_labels_traefik_additional_request_headers_custom`
 wazuh_dashboard_container_labels_traefik_additional_request_headers: "{{ wazuh_dashboard_container_labels_traefik_additional_request_headers_auto | combine(wazuh_dashboard_container_labels_traefik_additional_request_headers_custom) }}"
 wazuh_dashboard_container_labels_traefik_additional_request_headers_auto: {}
 wazuh_dashboard_container_labels_traefik_additional_request_headers_custom: {}
@@ -357,6 +406,8 @@ wazuh_http_header_x_content_type_options: nosniff
 wazuh_http_header_x_frame_options: SAMEORIGIN
 wazuh_http_header_strict_transport_security: "max-age=31536000; includeSubDomains"
 
+# Controls which additional headers to attach to all HTTP responses.
+# To add your own custom response headers, use `wazuh_dashboard_container_labels_traefik_additional_response_headers_custom`
 wazuh_dashboard_container_labels_traefik_additional_response_headers: "{{ wazuh_dashboard_container_labels_traefik_additional_response_headers_auto | combine(wazuh_dashboard_container_labels_traefik_additional_response_headers_custom) }}"
 wazuh_dashboard_container_labels_traefik_additional_response_headers_auto: |
   {{
@@ -367,38 +418,70 @@ wazuh_dashboard_container_labels_traefik_additional_response_headers_auto: |
     | combine({'Strict-Transport-Security': wazuh_http_header_strict_transport_security} if wazuh_http_header_strict_transport_security and wazuh_dashboard_container_labels_traefik_tls else {})
   }}
 wazuh_dashboard_container_labels_traefik_additional_response_headers_custom: {}
-# wazuh_dashboard_container_labels_additional_labels contains a multiline string with additional labels to add to the container label file.
-# See `man docker-run` for a description of the label file format and examples.
-# Example:
-# wazuh_dashboard_container_labels_additional_labels: |
-#   my.label=value
-#   another.label="value with spaces"
-wazuh_dashboard_container_labels_additional_labels: ""
 
+# wazuh_dashboard_container_labels_additional_labels contains a multiline string with additional labels to add to the container label file.
+# See `../templates/labels.j2` for details.
+# To add your own custom labels, use `wazuh_dashboard_container_labels_additional_labels_custom`
+#
+# Example:
+# wazuh_dashboard_container_labels_additional_labels_custom:
+#   - my.label=1
+#   - another.label="here"
+wazuh_dashboard_container_labels_additional_labels: "{{ wazuh_dashboard_container_labels_additional_labels_auto + wazuh_dashboard_container_labels_additional_labels_custom }}"
+wazuh_dashboard_container_labels_additional_labels_auto: []
+wazuh_dashboard_container_labels_additional_labels_custom: []
+
+# List of systemd services that the Wazuh dashboard systemd service depends on
 wazuh_dashboard_systemd_required_services_list: "{{ wazuh_dashboard_systemd_required_services_list_default + wazuh_dashboard_systemd_required_services_list_auto + wazuh_dashboard_systemd_required_services_list_custom }}"
 wazuh_dashboard_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 wazuh_dashboard_systemd_required_services_list_auto: []
 wazuh_dashboard_systemd_required_services_list_custom: []
 
+# List of systemd services that the Wazuh dashboard systemd service wants
 wazuh_dashboard_systemd_wanted_services_list: "{{ wazuh_dashboard_systemd_wanted_services_list_default + wazuh_dashboard_systemd_wanted_services_list_auto + wazuh_dashboard_systemd_wanted_services_list_custom }}"
 wazuh_dashboard_systemd_wanted_services_list_default: []
 wazuh_dashboard_systemd_wanted_services_list_auto: []
 wazuh_dashboard_systemd_wanted_services_list_custom: []
 
+# A list of additional container networks that the container would be connected to.
+# The role does not create these networks, so make sure they already exist.
+# Use this to expose this container to another reverse proxy, which runs in a different container network.
 wazuh_dashboard_container_additional_networks: "{{ wazuh_dashboard_container_additional_networks_auto + wazuh_dashboard_container_additional_networks_custom }}"
 wazuh_dashboard_container_additional_networks_auto: []
 wazuh_dashboard_container_additional_networks_custom: []
 
+# A list of additional "volumes" to mount in the container.
+# This list gets populated dynamically at runtime. You can provide a different default value,
+# if you wish to mount your own files into the container.
+# Contains definition objects like this: `{"type": "bind", "src": "/outside", "dst": "/inside", "options": "readonly"}.
+# See the `--mount` documentation for the `docker run` command.
 wazuh_dashboard_container_additional_volumes: "{{ wazuh_dashboard_container_additional_volumes_auto + wazuh_dashboard_container_additional_volumes_custom }}"
 wazuh_dashboard_container_additional_volumes_auto: []
 wazuh_dashboard_container_additional_volumes_custom: []
 
-wazuh_dashboard_container_extra_arguments: []
+# A list of extra arguments to pass to the container (`docker create` command)
+wazuh_dashboard_container_extra_arguments: "{{ wazuh_dashboard_container_extra_arguments_auto + wazuh_dashboard_container_extra_arguments_custom }}"
+wazuh_dashboard_container_extra_arguments_auto: []
+wazuh_dashboard_container_extra_arguments_custom: []
 
+# Controls how long to wait for the container to stop gracefully before killing it.
 wazuh_dashboard_container_stop_grace_time_seconds: "{{ devture_systemd_docker_base_container_stop_grace_time_seconds }}"
+
+# Controls how long the pre-start cleanup should wait for stale container-name release
+# before failing startup explicitly.
 wazuh_dashboard_container_cleanup_timeout_seconds: "{{ devture_systemd_docker_base_container_cleanup_timeout_seconds }}"
+
+# Controls the delay between pre-start cleanup retries.
 wazuh_dashboard_container_cleanup_retry_delay_seconds: "{{ devture_systemd_docker_base_container_cleanup_retry_delay_seconds }}"
 
+# wazuh_dashboard_restart_necessary controls whether the Wazuh dashboard systemd
+# service will be restarted (when true) or merely started (when false) by the
+# systemd service manager role (when conditional restart is enabled).
+#
+# This value is automatically computed during installation based on whether
+# any configuration files, the systemd service file, or the container image changed.
+# The default of `false` means "no restart needed" — appropriate when the role's
+# installation tasks haven't run (e.g., due to --tags skipping them).
 wazuh_dashboard_restart_necessary: false
 
 ########################################################################
