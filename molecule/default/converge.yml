@@ -14,15 +14,10 @@
     wazuh_indexer_kibanaserver_password_salt: "nHWBGpBAnHWBGpBAnHWBGp"
 
     wazuh_dashboard_container_labels_traefik_enabled: false
-    wazuh_dashboard_http_host_bind_port: "5601"
+    wazuh_dashboard_http_host_bind_port: "80"
 
     # Reduce JVM heap; default 1g/1g is too heavy for a molecule environment
     wazuh_indexer_opensearch_java_opts: "-Xms512m -Xmx512m"
-
-    # Safety net for vars absent in older systemd_docker_base versions
-    devture_systemd_docker_base_container_cleanup_timeout_seconds: 15
-    devture_systemd_docker_base_container_cleanup_retry_delay_seconds: 1
-
   roles:
     - role: com.devture.ansible.role.playbook_help
     - role: com.devture.ansible.role.systemd_docker_base
