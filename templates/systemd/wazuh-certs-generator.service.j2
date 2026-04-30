@@ -1,0 +1,25 @@
+{#
+SPDX-FileCopyrightText: 2026 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+#}
+
+[Unit]
+Description=Wazuh Certificate Generator (one-shot)
+DefaultDependencies=no
+
+[Service]
+Type=oneshot
+RemainAfterExit=no
+Environment="HOME={{ devture_systemd_docker_base_systemd_unit_home_path }}"
+ExecStartPre=-{{ devture_systemd_docker_base_host_command_docker }} rm -f wazuh-certs-generator
+ExecStart={{ devture_systemd_docker_base_host_command_docker }} run \
+    --rm \
+    --name=wazuh-certs-generator \
+    --log-driver=none \
+    --entrypoint=/wazuh-certs-entrypoint.sh \
+    --mount type=bind,src={{ wazuh_certs_path }}/certs.yml,dst=/config/certs.yml,readonly \
+    --mount type=bind,src={{ wazuh_certs_path }}/wazuh-certs-tool.sh,dst=/config/wazuh-certs-tool.sh,readonly \
+    --mount type=bind,src={{ wazuh_certs_path }}/wazuh-certs-entrypoint.sh,dst=/wazuh-certs-entrypoint.sh,readonly \
+    --mount type=bind,src={{ wazuh_certs_path }}/output,dst=/certificates \
+    {{ wazuh_certs_generator_container_image }}

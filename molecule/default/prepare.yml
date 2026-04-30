@@ -9,7 +9,13 @@
         update_cache: true
         cache_valid_time: 600
       when: ansible_os_family == 'Debian'
-      changed_when: false
+
+    - name: Ensure required packages are installed
+      ansible.builtin.package:
+        name:
+          - python3-requests
+          - python3-lxml
+        state: latest
 
     - name: Install Docker
       ansible.builtin.include_role:

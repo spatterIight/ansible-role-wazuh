@@ -36,7 +36,7 @@ wazuh_manager_gid: 999
 
 wazuh_container_network: "{{ wazuh_identifier }}"
 
-wazuh_no_log: true
+wazuh_no_log: false
 
 wazuh_uninstall_data_paths_enabled: false
 
@@ -420,6 +420,7 @@ wazuh_certs_generator_container_image_registry_prefix_upstream_default: docker.i
 wazuh_certs_generator_container_image: "{{ wazuh_certs_generator_container_image_registry_prefix }}wazuh/wazuh-certs-generator:{{ wazuh_certs_generator_container_image_tag }}"
 # renovate: datasource=docker depName=wazuh/wazuh-certs-generator versioning=semver
 wazuh_certs_generator_container_image_tag: "0.0.3"
+wazuh_certs_generator_container_image_force_pull: false
 
 # Default Wazuh certificate generation configuration template which covers the generic use case.
 # You can customize it by controlling the various variables inside it.

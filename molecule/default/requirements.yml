@@ -19,11 +19,6 @@ roles:
     scm: git
     version: main
 
-  - name: ansible-role-traefik
-    src: https://github.com/mother-of-all-self-hosting/ansible-role-traefik
-    scm: git
-    version: main
-
 #################
 ## Collections ##
 #################
@@ -31,12 +26,12 @@ roles:
 collections:
   - name: https://github.com/ansible-collections/community.docker
     type: git
-    version: main
+    version: 5.2.0
 
   - name: https://github.com/ansible-collections/community.general
     type: git
-    version: main
+    version: 12.6.0
 
   - name: https://github.com/ansible-collections/ansible.posix
     type: git
-    version: main
+    version: 2.1.0

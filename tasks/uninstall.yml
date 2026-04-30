@@ -11,6 +11,7 @@
     - "{{ wazuh_manager_identifier }}.service"
     - "{{ wazuh_indexer_identifier }}.service"
     - "{{ wazuh_dashboard_identifier }}.service"
+    - "wazuh-certs-generator.service"
   loop_control:
     loop_var: wazuh_unit_name
 

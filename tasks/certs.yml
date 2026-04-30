@@ -21,7 +21,7 @@
   block:
     - name: Write certs.yml for certificate generation
       ansible.builtin.copy:
-        content: "{{ wazuh_certs_yml | to_nice_yaml(indent=2) }}"
+        content: "{{ wazuh_certs_yml_yaml }}"
         dest: "{{ wazuh_certs_path }}/certs.yml"
         owner: root
         group: root
@@ -43,37 +43,41 @@
         group: root
         mode: "0750"
 
-    - name: Pull wazuh-certs-generator image
+    - name: Ensure wazuh-certs-generator container image is pulled via community.docker.docker_image
+      when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
       community.docker.docker_image:
         name: "{{ wazuh_certs_generator_container_image }}"
-        source: pull
+        source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+        force_source: "{{ wazuh_certs_generator_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+        force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else wazuh_certs_generator_container_image_force_pull }}"
+      register: result
       retries: "{{ devture_playbook_help_container_retries_count }}"
       delay: "{{ devture_playbook_help_container_retries_delay }}"
+      until: result is not failed
 
-    - name: Run wazuh-certs-generator one-shot container
-      community.docker.docker_container:
-        name: wazuh-certs-generator
-        image: "{{ wazuh_certs_generator_container_image }}"
-        entrypoint: /wazuh-certs-entrypoint.sh
-        auto_remove: true
-        detach: false
-        cleanup: true
-        mounts:
-          - type: bind
-            source: "{{ wazuh_certs_path }}/certs.yml"
-            target: /config/certs.yml
-            read_only: true
-          - type: bind
-            source: "{{ wazuh_certs_path }}/wazuh-certs-tool.sh"
-            target: /config/wazuh-certs-tool.sh
-            read_only: true
-          - type: bind
-            source: "{{ wazuh_certs_path }}/wazuh-certs-entrypoint.sh"
-            target: /wazuh-certs-entrypoint.sh
-            read_only: true
-          - type: bind
-            source: "{{ wazuh_certs_path }}/output"
-            target: /certificates
+    - name: Ensure wazuh-certs-generator container image is pulled via ansible.builtin.command
+      when: devture_systemd_docker_base_container_image_pull_method == 'command'
+      ansible.builtin.command:
+        cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ wazuh_certs_generator_container_image }}"
+      register: result
+      retries: "{{ devture_playbook_help_container_retries_count }}"
+      delay: "{{ devture_playbook_help_container_retries_delay }}"
+      until: result is not failed
+      changed_when: "'Downloaded newer image' in result.stdout"
+
+    - name: Install wazuh-certs-generator systemd service
+      ansible.builtin.template:
+        src: "{{ role_path }}/templates/systemd/wazuh-certs-generator.service.j2"
+        dest: "{{ devture_systemd_docker_base_systemd_path }}/wazuh-certs-generator.service"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Run wazuh-certs-generator systemd service
+      ansible.builtin.systemd:
+        name: wazuh-certs-generator.service
+        state: started
+        daemon_reload: true
 
     - name: Ensure per-component certificate directories exist
       ansible.builtin.file:

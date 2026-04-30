@@ -43,16 +43,36 @@
     group: "{{ wazuh_manager_gid }}"
   changed_when: false
 
+- name: Wrap Wazuh manager config in temporary XML root for multi-document support
+  ansible.builtin.lineinfile:
+    path: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
+    line: "{{ item.line }}"
+    insertbefore: "{{ item.insertbefore | default(omit) }}"
+    insertafter: "{{ item.insertafter | default(omit) }}"
+  changed_when: false
+  loop:
+    - line: "<wazuh_root>"
+      insertbefore: BOF
+    - line: "</wazuh_root>"
+      insertafter: EOF
+
 - name: Ensure Wazuh manager ossec.conf has the defined adjustments
   no_log: "{{ wazuh_no_log }}"
   community.general.xml:
     path: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
-    xpath: "{{ item.xpath }}"
+    xpath: "{{ item.xpath | regex_replace('^/ossec_config', '/wazuh_root/ossec_config') }}"
     value: "{{ item.value | default(omit) }}"
     state: "{{ item.state | default('present') }}"
-    pretty_print: "{{ item.pretty_print | default(true) }}"
+    pretty_print: "{{ item.pretty_print | default(false) }}"
   changed_when: false
   with_items: "{{ wazuh_manager_ossec_xml_replacements }}"
+
+- name: Remove temporary XML root wrapper from Wazuh manager config
+  ansible.builtin.lineinfile:
+    path: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
+    regexp: "^</?wazuh_root>\\s*$"
+    state: absent
+  changed_when: false
 
 - name: Ensure Wazuh manager ossec.conf is installed
   ansible.builtin.copy:
