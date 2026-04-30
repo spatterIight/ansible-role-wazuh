@@ -56,7 +56,6 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --mount type=bind,src={{ wazuh_certs_path }}/manager/root-ca-manager.pem,dst=/etc/ssl/root-ca.pem,readonly \
       --mount type=bind,src={{ wazuh_certs_path }}/manager/wazuh.manager.pem,dst=/etc/ssl/filebeat.pem,readonly \
       --mount type=bind,src={{ wazuh_certs_path }}/manager/wazuh.manager-key.pem,dst=/etc/ssl/filebeat.key,readonly \
-      --mount type=bind,src={{ wazuh_data_path }}/manager/wazuh_manager.conf,dst=/wazuh-config-mount/etc/ossec.conf,readonly \
       {% if wazuh_manager_container_memory_limit != '' %}
       --memory={{ wazuh_manager_container_memory_limit }} \
       {% endif %}

@@ -76,7 +76,7 @@
 - name: Ensure Wazuh manager ossec.conf is installed
   ansible.builtin.copy:
     src: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
-    dest: "{{ wazuh_data_path }}/manager/wazuh_manager.conf"
+    dest: "{{ wazuh_data_path }}/manager/etc/ossec.conf"
     remote_src: true
     mode: "0640"
     owner: "{{ wazuh_manager_uid }}"
