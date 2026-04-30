@@ -57,7 +57,6 @@
       insertafter: EOF
 
 - name: Ensure Wazuh manager ossec.conf has the defined adjustments
-  no_log: "{{ wazuh_no_log }}"
   community.general.xml:
     path: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
     xpath: "{{ item.xpath | regex_replace('^/ossec_config', '/wazuh_root/ossec_config') }}"
@@ -91,7 +90,6 @@
     mode: "0600"
     owner: root
     group: root
-  no_log: "{{ wazuh_no_log }}"
   register: wazuh_manager_env_result
 
 - name: Ensure Wazuh manager container image is pulled via community.docker.docker_image

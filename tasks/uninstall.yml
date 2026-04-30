@@ -19,21 +19,20 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
-- name: Remove Wazuh data paths
-  when: wazuh_uninstall_data_paths_enabled | bool
-  ansible.builtin.file:
+- name: Check existence of Wazuh local data path
+  ansible.builtin.stat:
     path: "{{ wazuh_data_path }}"
-    state: absent
+  register: wazuh_data_path_stat
 
 - name: Notify about remaining Wazuh data
-  when: not wazuh_uninstall_data_paths_enabled | bool
+  when: wazuh_data_path_stat.stat.exists | bool
   ansible.builtin.set_fact:
     devture_playbook_runtime_messages_list: |
       {{
         devture_playbook_runtime_messages_list | default([])
         +
         [
-          "Note: Wazuh data remains at " + wazuh_data_path + ". Set wazuh_uninstall_data_paths_enabled: true to remove it."
+          "Note: As the local Wazuh instance has been removed, some old data remains in `" + wazuh_data_path + "`. Feel free to delete it."
         ]
       }}
 

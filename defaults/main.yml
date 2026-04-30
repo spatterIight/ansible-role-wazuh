@@ -26,19 +26,18 @@ wazuh_base_path: "/{{ wazuh_identifier }}"
 wazuh_data_path: "{{ wazuh_base_path }}/data"
 wazuh_certs_path: "{{ wazuh_base_path }}/certs"
 
-# UID/GID for indexer and dashboard containers (upstream: 1000)
+# UID/GID for indexer and dashboard containers
+# This is non-configurable due to upstream hard coding
 wazuh_uid: 1000
 wazuh_gid: 1000
 
-# UID/GID for the manager container (upstream: 999)
+# UID/GID for the manager container
+# This is non-configurable due to upstream hard coding
 wazuh_manager_uid: 999
 wazuh_manager_gid: 999
 
+# The base container network. It will be auto-created by this role if it doesn't exist already.
 wazuh_container_network: "{{ wazuh_identifier }}"
-
-wazuh_no_log: false
-
-wazuh_uninstall_data_paths_enabled: false
 
 ########################################################################
 #                                                                      #
@@ -170,7 +169,7 @@ wazuh_indexer_container_memory_swap_limit: ""
 #
 # For a more advanced customization, you can extend the default (see `wazuh_indexer_opensearch_yml_extension_yaml`)
 # or completely replace this variable with your own template.
-wazuh_indexer_opensearch_yml_yaml: "{{ lookup('template', role_path + '/templates/indexer/opensearch.yml.j2') }}"
+wazuh_indexer_opensearch_yml_yaml: "{{ lookup('template', role_path + '/templates/indexer/wazuh.indexer.yml.j2') }}"
 
 wazuh_indexer_opensearch_yml_extension_yaml: |
   # Your custom YAML configuration for the Wazuh indexer goes here.

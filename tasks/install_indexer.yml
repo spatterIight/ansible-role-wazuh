@@ -32,7 +32,6 @@
   register: wazuh_indexer_opensearch_yml_result
 
 - name: Ensure Wazuh indexer internal_users.yml is installed
-  no_log: "{{ wazuh_no_log }}"
   ansible.builtin.copy:
     content: "{{ wazuh_indexer_internal_users_yml | to_nice_yaml(indent=2) }}"
     dest: "{{ wazuh_data_path }}/indexer/config/internal_users.yml"

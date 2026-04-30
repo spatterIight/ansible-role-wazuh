@@ -27,7 +27,6 @@
   register: wazuh_dashboard_opensearch_yml_result
 
 - name: Ensure Wazuh dashboard wazuh.yml is installed
-  no_log: "{{ wazuh_no_log }}"
   ansible.builtin.copy:
     content: "{{ wazuh_dashboard_wazuh_yml | to_nice_yaml(indent=2) }}"
     dest: "{{ wazuh_data_path }}/dashboard/data/config/wazuh.yml"
@@ -43,7 +42,6 @@
     mode: "0600"
     owner: root
     group: root
-  no_log: "{{ wazuh_no_log }}"
   register: wazuh_dashboard_env_result
 
 - name: Ensure Wazuh dashboard labels file is installed

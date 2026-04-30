@@ -5,7 +5,6 @@
 ---
 - name: Ensure Wazuh agent enrollment password file is present
   when: wazuh_enrollment_password | length > 0
-  no_log: "{{ wazuh_no_log }}"
   ansible.builtin.copy:
     content: "{{ wazuh_enrollment_password }}"
     dest: "{{ wazuh_data_path }}/manager/etc/authd.pass"
