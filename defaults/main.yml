@@ -556,7 +556,7 @@ wazuh_certs_yml: "{{ wazuh_certs_yml_yaml | from_yaml | combine(wazuh_certs_yml_
 # Set to a non-empty string to enable password-based agent enrollment.
 wazuh_enrollment_password: ""
 
-# What contents the agent.conf file shoud have, a mechanism to configure agents remotely
+# What contents the agent.conf file should have, a mechanism to configure agents remotely
 #
 # Example:
 # wazuh_agent_conf: |

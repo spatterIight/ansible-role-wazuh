@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2026 spatterlight
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # Molecule Testing
 
 ## Installation

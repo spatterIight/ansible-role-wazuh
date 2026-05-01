@@ -111,7 +111,6 @@ wazuh_enrollment_password: "your-enrollment-password"
 
 See the [docs](https://documentation.wazuh.com/current/user-manual/agent/agent-enrollment/security-options/using-password-authentication.html) for more information.
 
-
 ## Custom rules
 
 Add custom Wazuh rules via the `wazuh_rules` variable:

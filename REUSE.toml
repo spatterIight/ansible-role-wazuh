@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025 Suguru Hirahara
 # SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -14,7 +16,10 @@ path = [
     ".gitignore",
     ".pre-commit-config.yaml",
     ".yamllint.yml",
-    "meta/main.yml"
+    "meta/main.yml",
+    ".python-version",
+    "molecule/requirements.txt",
+    "molecule/default/requirements.yml"
 ]
 SPDX-FileCopyrightText = "NONE"
 SPDX-License-Identifier = "CC0-1.0"

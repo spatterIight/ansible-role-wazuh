@@ -43,7 +43,7 @@
     group: "{{ wazuh_manager_gid }}"
   changed_when: false
 
-# This is hacky work-around due to deal w/ the offical Wazuh XML not being compatible with Python's lxml
+# This is hacky work-around due to deal w/ the official Wazuh XML not being compatible with Python's lxml
 # TODO -> Find a better solution?
 - name: Wrap Wazuh manager config in temporary XML root for multi-document support
   ansible.builtin.lineinfile:
