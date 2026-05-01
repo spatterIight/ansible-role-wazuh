@@ -109,9 +109,8 @@ By default agents enroll without a password. To require a password:
 wazuh_enrollment_password: "your-enrollment-password"
 ```
 
-Set `wazuh_enrollment_password: ""` (empty string) to disable password-based enrollment.
+See the [docs](https://documentation.wazuh.com/current/user-manual/agent/agent-enrollment/security-options/using-password-authentication.html) for more information.
 
-The enrollment password is stored in `{{ wazuh_data_path }}/manager/etc/authd.pass` and mounted into the manager container at startup.
 
 ## Custom rules
 
@@ -131,17 +130,24 @@ wazuh_rules:
 
 Rule files are written to `{{ wazuh_data_path }}/manager/etc/rules/` and mounted into the container.
 
-## Central agent configuration
+## Centralized configuration (agent.conf)
 
-Push configuration to all agents via `agent.conf`:
+Set `wazuh_agent_conf` to configure the agent.conf file:
 
 ```yaml
-wazuh_agent_labels_conf: |
-  <localfile>
-    <log_format>syslog</log_format>
-    <location>/var/log/syslog</location>
-  </localfile>
+wazuh_agent_conf: |
+  <agent_config name="92603de31548">
+    <labels>
+      <label key="aws.instance-id">i-052a1838c</label>
+      <label key="aws.sec-group">sg-1103</label>
+      <label key="network.ip">172.17.0.0</label>
+      <label key="network.mac">02:42:ac:11:00:02</label>
+      <label key="installation" hidden="yes">July 1st, 2024</label>
+    </labels>
+  </agent_config>
 ```
+
+See the [docs](https://documentation.wazuh.com/current/user-manual/reference/centralized-configuration.html) for more information and what can be configured here.
 
 ## Custom integrations
 

@@ -36,6 +36,13 @@ wazuh_gid: 1000
 wazuh_manager_uid: 999
 wazuh_manager_gid: 999
 
+# The hostname at which Wazuh is served.
+wazuh_hostname: ""
+
+# The path at which Wazuh is served
+# This value must either be `/` or not end with a slash (e.g. `/wazuh`).
+wazuh_path_prefix: /
+
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 wazuh_container_network: "{{ wazuh_identifier }}"
 
@@ -45,7 +52,7 @@ wazuh_container_network: "{{ wazuh_identifier }}"
 #                                                                      #
 ########################################################################
 
-wazuh_manager_enabled: true
+wazuh_manager_enabled: "{{ wazuh_enabled }}"
 
 wazuh_manager_identifier: "{{ wazuh_identifier }}-manager"
 
@@ -165,7 +172,7 @@ wazuh_manager_restart_necessary: false
 #                                                                      #
 ########################################################################
 
-wazuh_indexer_enabled: true
+wazuh_indexer_enabled: "{{ wazuh_enabled }}"
 
 wazuh_indexer_identifier: "{{ wazuh_identifier }}-indexer"
 
@@ -295,7 +302,7 @@ wazuh_indexer_restart_necessary: false
 #                                                                      #
 ########################################################################
 
-wazuh_dashboard_enabled: true
+wazuh_dashboard_enabled: "{{ wazuh_enabled }}"
 
 wazuh_dashboard_identifier: "{{ wazuh_identifier }}-dashboard"
 
@@ -385,8 +392,9 @@ wazuh_dashboard_wazuh_yml: "{{ wazuh_dashboard_wazuh_yml_yaml | from_yaml | comb
 # To inject your own other container labels, see `wazuh_dashboard_container_labels_additional_labels_custom`.
 wazuh_dashboard_container_labels_traefik_enabled: true
 wazuh_dashboard_container_labels_traefik_docker_network: ""
-wazuh_dashboard_container_labels_traefik_hostname: ""
-wazuh_dashboard_container_labels_traefik_path_prefix: /
+wazuh_dashboard_container_labels_traefik_hostname: "{{ wazuh_hostname }}"
+# The path prefix must either be `/` or not end with a slash (e.g. `/wazuh`).
+wazuh_dashboard_container_labels_traefik_path_prefix: "{{ wazuh_path_prefix }}"
 wazuh_dashboard_container_labels_traefik_rule: "Host(`{{ wazuh_dashboard_container_labels_traefik_hostname }}`){% if wazuh_dashboard_container_labels_traefik_path_prefix != '/' %} && PathPrefix(`{{ wazuh_dashboard_container_labels_traefik_path_prefix }}`){% endif %}"
 wazuh_dashboard_container_labels_traefik_priority: 0
 wazuh_dashboard_container_labels_traefik_entrypoints: web-secure
@@ -548,6 +556,21 @@ wazuh_certs_yml: "{{ wazuh_certs_yml_yaml | from_yaml | combine(wazuh_certs_yml_
 # Set to a non-empty string to enable password-based agent enrollment.
 wazuh_enrollment_password: ""
 
+# What contents the agent.conf file shoud have, a mechanism to configure agents remotely
+#
+# Example:
+# wazuh_agent_conf: |
+#   <agent_config name="92603de31548">
+#     <labels>
+#       <label key="aws.instance-id">i-052a1838c</label>
+#       <label key="aws.sec-group">sg-1103</label>
+#       <label key="network.ip">172.17.0.0</label>
+#       <label key="network.mac">02:42:ac:11:00:02</label>
+#       <label key="installation" hidden="yes">July 1st, 2024</label>
+#     </labels>
+#   </agent_config>
+wazuh_agent_conf: ""
+
 # List of custom rules to deploy to the manager. Each item must have a `file` name and `contents`.
 #
 # Example:
@@ -560,9 +583,6 @@ wazuh_enrollment_password: ""
 #         </rule>
 #       </group>
 wazuh_rules: []
-
-# Content for shared/default/agent.conf (injected verbatim inside <agent_config>…</agent_config>)
-wazuh_agent_labels_conf: ""
 
 ########################################################################
 #                                                                      #
