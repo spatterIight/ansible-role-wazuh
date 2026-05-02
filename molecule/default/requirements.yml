@@ -24,14 +24,11 @@ roles:
 #################
 
 collections:
-  - name: https://github.com/ansible-collections/community.docker
-    type: git
+  - name: community.docker
     version: 5.2.0
 
-  - name: https://github.com/ansible-collections/community.general
-    type: git
+  - name: community.general
     version: 12.6.0
 
-  - name: https://github.com/ansible-collections/ansible.posix
-    type: git
+  - name: ansible.posix
     version: 2.1.0
