@@ -100,7 +100,7 @@ wazuh_manager_container_memory_swap_limit: ""
 # Indexer connection (used in env-file and wazuh_manager.conf XPath replacements)
 wazuh_manager_indexer_url: "https://wazuh.indexer:9200"
 wazuh_manager_indexer_username: "admin"
-wazuh_manager_indexer_password: ""
+wazuh_manager_indexer_password: "{{ wazuh_indexer_admin_password }}"
 
 # Manager API credentials
 wazuh_manager_api_username: "wazuh-wui"
