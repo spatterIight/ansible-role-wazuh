@@ -50,9 +50,9 @@
         fail_msg: "wazuh-dashboard.service not active ({{ dashboard_service.status.ActiveState }})"
         success_msg: "wazuh-dashboard.service is active"
 
-    - name: Wait for dashboard HTTPS endpoint to respond (up to 120s)
+    - name: Wait for dashboard HTTP endpoint to respond (up to 120s)
       ansible.builtin.uri:
-        url: "https://localhost:5601/app/login"
+        url: "http://localhost:{{ wazuh_dashboard_http_host_bind_port }}/app/login"
         method: GET
         validate_certs: false
         status_code: 200

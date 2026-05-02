@@ -17,6 +17,8 @@
 
     wazuh_dashboard_container_labels_traefik_enabled: false
     wazuh_dashboard_http_host_bind_port: "80"
+
+    wazuh_indexer_opensearch_java_opts: "-Xms512m -Xmx512m"
   tasks:
     - name: Include roles
       ansible.builtin.include_role:
