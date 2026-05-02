@@ -59,7 +59,6 @@ wazuh_enabled: true
 wazuh_indexer_admin_password: ""
 wazuh_indexer_kibanaserver_password: ""
 wazuh_manager_api_password: ""
-wazuh_manager_indexer_password: ""
 
 # Salt's used to hash the above passwords idempotently. Must be exactly 22 characters.
 # Generate one using `pwgen -s 22 1`, or some other way
