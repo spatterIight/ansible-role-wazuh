@@ -8,10 +8,10 @@
   become: true
   gather_facts: true
   vars:
-    wazuh_indexer_admin_password: "*<K;)rdT9CLacp|eFdgVEu/7wmi.&6OYJ9-XE.XcnPMs2,P}IaBZU?4#,{x/k^aq"
-    wazuh_indexer_kibanaserver_password: "m_>(BrZmdOf{%lg:#8O?)Z%KpLHB`*zP_[CPH:*1W;(>Y!,Cp*fvw&O4|jc_aP{8"
-    wazuh_manager_api_password: "a[Q/47x|K{6!7GTCQQ:.+{~FVbm[[c3CEY0wTZtW*/h0>1s>tj5u{r,9g4TtFweJ"
-    wazuh_manager_indexer_password: "&7_UDCR1(M_4qD}KT3&?F>_G=%&v|mEh!p:[]w8-Cyg~ann<5EX2lF-5=H:Z*)mI"
+    wazuh_indexer_admin_password: "-e99_t)IpGfN(fFyo(oq<u`%gHA~m~dWY9CGG#&*%832RfZWH:SnkvTxYQn3RBwR"
+    wazuh_indexer_kibanaserver_password: "MVbD1iNV@t`0+Ix>kO-A7uvnAhJ:/yGzG(P.%Lg8luzJt4jSZy5hTfculf9!few="
+    wazuh_manager_api_password: "e.>*<DheN[S&uZn&>u<~l!ffio`e%%0Dx#avY(tUb-DIUXC&@fQ_)=jH[WE^G<zX"
+    wazuh_manager_indexer_password: "ij1S@ePWtD0;0ioxLaEp]Gp#Z4(pdy,Qpz,AufVYo-YTT57^i(u4lS22qc`ThX*6"
 
     wazuh_indexer_admin_password_salt: "3tYCPUOl9UOjLWVjKptmvf"
     wazuh_indexer_kibanaserver_password_salt: "xRA72EkyJEHeYwM4jSxVK6"
