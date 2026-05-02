@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Prepare Wazuh host
+- name: Prepare
   hosts: all
   become: true
   gather_facts: true

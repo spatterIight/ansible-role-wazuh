@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Verify Wazuh services are running
+- name: Verify
   hosts: all
   become: true
   gather_facts: false
