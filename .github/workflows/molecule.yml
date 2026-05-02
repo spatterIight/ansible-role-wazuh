@@ -1,0 +1,58 @@
+---
+name: molecule
+
+on: [push, pull_request]
+
+jobs:
+  molecule:
+    name: molecule [${{ matrix.distro }}]
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        distro:
+          - ubuntu2404
+          - ubuntu2204
+          - debian12
+          - debian11
+      fail-fast: false
+
+    env:
+      MOLECULE_DISTRO: ${{ matrix.distro }}
+      PY_COLORS: "1"
+      ANSIBLE_FORCE_COLOR: "1"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          path: wazuh
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version-file: wazuh/.python-version
+          cache: pip
+          cache-dependency-path: wazuh/molecule/requirements.txt
+
+      - name: Install Python dependencies
+        working-directory: wazuh
+        run: pip install -r molecule/requirements.txt
+
+      - name: Cache Ansible collections
+        uses: actions/cache@v4
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('wazuh/molecule/default/requirements.yml') }}
+
+      - name: Install Ansible roles
+        working-directory: wazuh
+        run: ansible-galaxy role install -r molecule/default/requirements.yml
+
+      - name: Install Ansible collections
+        working-directory: wazuh
+        run: ansible-galaxy collection install -r molecule/default/requirements.yml
+
+      - name: Run molecule
+        working-directory: wazuh
+        run: molecule test
