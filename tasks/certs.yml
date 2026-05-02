@@ -3,14 +3,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Ensure Wazuh certs output directory exists
-  ansible.builtin.file:
-    path: "{{ wazuh_certs_path }}/output"
-    state: directory
-    mode: "0750"
-    owner: root
-    group: root
-
 - name: Check if Wazuh certificates have already been generated
   ansible.builtin.stat:
     path: "{{ wazuh_certs_path }}/.generated"
@@ -19,6 +11,14 @@
 - name: Generate Wazuh certificates
   when: not wazuh_certs_generated_stat.stat.exists
   block:
+    - name: Ensure Wazuh certs output directory exists
+      ansible.builtin.file:
+        path: "{{ wazuh_certs_path }}/output"
+        state: directory
+        mode: "0750"
+        owner: root
+        group: root
+
     - name: Write certs.yml for certificate generation
       ansible.builtin.copy:
         content: "{{ wazuh_certs_yml_yaml }}"

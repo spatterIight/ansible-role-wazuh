@@ -55,7 +55,7 @@ To enable Wazuh with this role, add the following configuration to your `vars.ym
 wazuh_enabled: true
 
 # Passwords used to authenticate with the dashboard and for components to authenticate between each other
-# Generate them using `pwgen -s 64 4`, and manually include at least one special character, or some other way.
+# Generate them using `pwgen -s 63 4`, and manually include at least one special character, or some other way.
 wazuh_indexer_admin_password: ""
 wazuh_indexer_kibanaserver_password: ""
 wazuh_manager_api_password: ""

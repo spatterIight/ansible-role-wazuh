@@ -34,7 +34,6 @@
     msg: >-
       wazuh_manager_api_password must contain at least 8 characters including one uppercase letter,
       one lowercase letter, one digit, and one special character (Wazuh Error 5007 otherwise).
-      Avoid '$' in the password — use '!', '@', '#', '^', '*', or similar instead.
   when: >-
     wazuh_manager_enabled | bool and wazuh_manager_api_password | length > 0 and (
       wazuh_manager_api_password | length < 8
@@ -43,6 +42,13 @@
       or not (wazuh_manager_api_password is search('[0-9]'))
       or not (wazuh_manager_api_password is search('[^A-Za-z0-9]'))
     )
+
+- name: Fail if manager API password exceeds Wazuh maximum length
+  ansible.builtin.fail:
+    msg: >-
+      wazuh_manager_api_password must not exceed 64 characters (Wazuh Error 5009 otherwise).
+      Current length: {{ wazuh_manager_api_password | length }}.
+  when: "wazuh_manager_enabled | bool and wazuh_manager_api_password | length > 64"
 
 - name: Fail if external indexer URL was not changed when indexer is disabled
   ansible.builtin.fail:

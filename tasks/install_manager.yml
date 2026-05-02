@@ -7,9 +7,6 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: "0750"
-    owner: "{{ wazuh_manager_uid }}"
-    group: "{{ wazuh_manager_gid }}"
   with_items:
     - "{{ wazuh_data_path }}/manager"
     - "{{ wazuh_data_path }}/manager/api_configuration"
