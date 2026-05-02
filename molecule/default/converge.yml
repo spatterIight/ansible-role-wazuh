@@ -26,6 +26,7 @@
   gather_facts: false
   tasks:
     - name: Set TimeoutStartSec=0 for Wazuh services
+      changed_when: false # Do not mark as changed to avoid the idempotency failure
       ansible.builtin.lineinfile:
         path: "/etc/systemd/system/{{ item }}.service"
         insertafter: "^Type=simple"
@@ -34,7 +35,6 @@
         - wazuh-indexer
         - wazuh-manager
         - wazuh-dashboard
-      tags: molecule-idempotence-notest
 
     - name: Reload systemd daemon
       ansible.builtin.systemd_service:
