@@ -19,42 +19,42 @@
       loop_control:
         loop_var: role_name
 
+# This seems needed due to molecule timing out in Github Actions
+- name: Relax systemd start timeout
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Set TimeoutStartSec=0 for Wazuh services
+      ansible.builtin.lineinfile:
+        path: "/etc/systemd/system/{{ item }}.service"
+        insertafter: "^Type=simple"
+        line: "TimeoutStartSec=0"
+      loop:
+        - "{{ wazuh_indexer_identifier }}"
+        - "{{ wazuh_manager_identifier }}"
+        - "{{ wazuh_dashboard_identifier }}"
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd_service:
+        daemon_reload: true
+
 - name: Ensure Wazuh services are started
   hosts: all
   become: true
   gather_facts: false
   tasks:
-    - block:
-        - name: Start wazuh-indexer service
-          ansible.builtin.systemd_service:
-            name: wazuh-indexer.service
-            state: started
-            daemon_reload: true
+    - name: Start wazuh-indexer service
+      ansible.builtin.systemd_service:
+        name: wazuh-indexer.service
+        state: started
 
-        - name: Start wazuh-manager service
-          ansible.builtin.systemd_service:
-            name: wazuh-manager.service
-            state: started
+    - name: Start wazuh-manager service
+      ansible.builtin.systemd_service:
+        name: wazuh-manager.service
+        state: started
 
-        - name: Start wazuh-dashboard service
-          ansible.builtin.systemd_service:
-            name: wazuh-dashboard.service
-            state: started
-      always:
-        - shell: journalctl -u wazuh-indexer.service
-          register: temp1
-
-        - shell: journalctl -u wazuh-manager.service
-          register: temp2
-
-        - shell: journalctl -u wazuh-dashboard.service
-          register: temp3
-
-        - debug:
-            var: temp1
-
-        - debug:
-            var: temp2
-
-        - debug:
-            var: temp3
+    - name: Start wazuh-dashboard service
+      ansible.builtin.systemd_service:
+        name: wazuh-dashboard.service
+        state: started
