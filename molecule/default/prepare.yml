@@ -19,7 +19,7 @@
         name:
           - python3-requests
           - python3-lxml
-        state: latest
+        state: present
 
     - name: Install Docker
       ansible.builtin.include_role:

@@ -13,6 +13,7 @@ path = [
     ".github/renovate.json",
     ".github/workflows/pre-commit.yml",
     ".github/workflows/autotag.yml",
+    ".github/workflows/molecule.yml",
     ".gitignore",
     ".pre-commit-config.yaml",
     ".yamllint.yml",
