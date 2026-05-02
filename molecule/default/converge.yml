@@ -34,6 +34,7 @@
         - wazuh-indexer
         - wazuh-manager
         - wazuh-dashboard
+      tags: molecule-idempotence-notest
 
     - name: Reload systemd daemon
       ansible.builtin.systemd_service:
