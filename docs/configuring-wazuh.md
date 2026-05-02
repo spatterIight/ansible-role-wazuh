@@ -54,11 +54,12 @@ To enable Wazuh with this role, add the following configuration to your `vars.ym
 
 wazuh_enabled: true
 
-# Passwords used to authenticate with the dashboard (former), and for containers to authenticate between each other (latter two)
-# Generate one using `pwgen -s 64 1`, or some other way
+# Passwords used to authenticate with the dashboard and for components to authenticate between each other
+# Generate them using `pwgen -sy -r '\'"$\\' 64 4`, or some other way.
 wazuh_indexer_admin_password: ""
 wazuh_indexer_kibanaserver_password: ""
 wazuh_manager_api_password: ""
+wazuh_manager_indexer_password: ""
 
 # Salt's used to hash the above passwords idempotently. Must be exactly 22 characters.
 # Generate one using `pwgen -s 22 1`, or some other way
