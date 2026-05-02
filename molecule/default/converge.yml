@@ -19,15 +19,16 @@
       loop_control:
         loop_var: role_name
 
-# This seems needed due to molecule timing out in Github Actions
-- name: Relax systemd start timeout
+- name: Ensure Wazuh services are started
   hosts: all
   become: true
   gather_facts: false
   tasks:
+    # This seems needed due to molecule timing out in Github Actions
     - name: Set TimeoutStartSec=0 for Wazuh services
       changed_when: false # Do not mark as changed to avoid the idempotency failure
       ansible.builtin.lineinfile:
+        state: present
         path: "/etc/systemd/system/{{ item }}.service"
         insertafter: "^Type=simple"
         line: "TimeoutStartSec=0"
@@ -40,11 +41,6 @@
       ansible.builtin.systemd_service:
         daemon_reload: true
 
-- name: Ensure Wazuh services are started
-  hosts: all
-  become: true
-  gather_facts: false
-  tasks:
     - name: Start wazuh-indexer service
       ansible.builtin.systemd_service:
         name: wazuh-indexer.service
@@ -59,3 +55,17 @@
       ansible.builtin.systemd_service:
         name: wazuh-dashboard.service
         state: started
+
+    # Set state to absent so
+    # "Ensure Wazuh * systemd service is installed" tasks do not have idempotency failures
+    - name: Set TimeoutStartSec=0 for Wazuh services
+      changed_when: false # Do not mark as changed to avoid the idempotency failure
+      ansible.builtin.lineinfile:
+        state: absent
+        path: "/etc/systemd/system/{{ item }}.service"
+        insertafter: "^Type=simple"
+        line: "TimeoutStartSec=0"
+      loop:
+        - wazuh-indexer
+        - wazuh-manager
+        - wazuh-dashboard
