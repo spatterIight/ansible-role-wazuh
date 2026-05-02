@@ -31,9 +31,9 @@
         insertafter: "^Type=simple"
         line: "TimeoutStartSec=0"
       loop:
-        - "{{ wazuh_indexer_identifier }}"
-        - "{{ wazuh_manager_identifier }}"
-        - "{{ wazuh_dashboard_identifier }}"
+        - wazuh-indexer
+        - wazuh-manager
+        - wazuh-dashboard
 
     - name: Reload systemd daemon
       ansible.builtin.systemd_service:
