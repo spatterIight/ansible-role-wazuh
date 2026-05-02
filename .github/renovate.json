@@ -7,6 +7,15 @@
   "labels": [
     "dependencies"
   ],
+  "pip_requirements": {
+    "managerFilePatterns": ["(^|/)requirements[^/]*\\.txt$"]
+  },
+  "ansible-galaxy": {
+    "managerFilePatterns": ["(^|/)molecule/default/requirements\\.ya?ml$"]
+  },
+  "pyenv": {
+    "enabled": true
+  },
   "packageRules": [
     {
       "matchFileNames": [

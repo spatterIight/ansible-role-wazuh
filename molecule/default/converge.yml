@@ -21,12 +21,14 @@
   tasks:
     - name: Include roles
       ansible.builtin.include_role:
-        name: "{{ item }}"
+        name: "{{ role_name }}"
         public: true
       loop:
         - com.devture.ansible.role.playbook_help
         - com.devture.ansible.role.systemd_docker_base
         - "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
+      loop_control:
+        loop_var: role_name
 
 - name: Start Wazuh services
   hosts: all

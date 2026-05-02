@@ -7,7 +7,7 @@ roles:
   - name: ansible-role-docker
     src: https://github.com/geerlingguy/ansible-role-docker
     scm: git
-    version: master
+    version: 8.0.0
 
   - name: com.devture.ansible.role.playbook_help
     src: https://github.com/devture/com.devture.ansible.role.playbook_help
@@ -17,7 +17,7 @@ roles:
   - name: com.devture.ansible.role.systemd_docker_base
     src: https://github.com/devture/com.devture.ansible.role.systemd_docker_base
     scm: git
-    version: main
+    version: v1.5.0-0
 
 #################
 ## Collections ##
