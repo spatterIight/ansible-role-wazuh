@@ -16,18 +16,18 @@ pip3 install -r ./molecule/requirements.txt
 
 ## Running
 
-Ubuntu 24.04 (default):
+Ubuntu 26.04 (default):
 
 ```bash
-molecule test --scenario-name default
+molecule test
 ```
 
 Other distributions:
 
 ```bash
-# Ubuntu 22.04
-MOLECULE_DISTRO=ubuntu2204 molecule test --scenario-name default
+# Ubuntu 24.04
+MOLECULE_DISTRO=ubuntu2404 molecule test
 
-# Debian 12
-MOLECULE_DISTRO=debian12 molecule test --scenario-name default
+# Debian 13
+MOLECULE_DISTRO=debian13 molecule test
 ```

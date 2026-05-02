@@ -10,8 +10,8 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: wazuh-${MOLECULE_DISTRO:-ubuntu2404}-default
-    image: "geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2404}-ansible:latest"
+  - name: wazuh-${MOLECULE_DISTRO:-ubuntu2604}-default
+    image: "geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2604}-ansible:latest"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
       - /sys/fs/cgroup:/sys/fs/cgroup:rw
