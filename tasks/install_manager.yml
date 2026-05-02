@@ -3,7 +3,8 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Ensure Wazuh manager data directories exist
+# This task does not explicitly set permissions since doing so resolves an idempotency issue
+- name: Ensure Wazuh manager data directories exist # noqa: risky-file-permissions
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
