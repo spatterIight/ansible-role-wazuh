@@ -65,6 +65,10 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       {% for volume in wazuh_manager_container_additional_volumes %}
       --mount type=bind,src={{ volume.src }},dst={{ volume.dst }}{{ (',readonly' if volume.readonly | default(false) else '') }} \
       {% endfor %}
+      --health-cmd="{{ wazuh_manager_health_cmd }}" \
+      --health-interval={{ wazuh_manager_health_interval }} \
+      --health-timeout={{ wazuh_manager_health_timeout }} \
+      --health-retries={{ wazuh_manager_health_retries }} \
       {% if wazuh_manager_container_extra_arguments | length > 0 %}
       {{ wazuh_manager_container_extra_arguments | join(' ') }} \
       {% endif %}
