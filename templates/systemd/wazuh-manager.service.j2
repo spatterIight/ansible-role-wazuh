@@ -1,4 +1,6 @@
 {#
+SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 SPDX-FileCopyrightText: 2026 spatterlight
 
 SPDX-License-Identifier: AGPL-3.0-or-later
@@ -24,6 +26,9 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --rm \
       --name={{ wazuh_manager_identifier }} \
       --log-driver=none \
+      {% if wazuh_manager_container_read_only %}
+      --read-only \
+      {% endif %}
       --network={{ wazuh_container_network }} \
       --network-alias=wazuh.manager \
       --hostname=wazuh.manager \
@@ -65,10 +70,10 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       {% for volume in wazuh_manager_container_additional_volumes %}
       --mount type=bind,src={{ volume.src }},dst={{ volume.dst }}{{ (',readonly' if volume.readonly | default(false) else '') }} \
       {% endfor %}
-      --health-cmd="{{ wazuh_manager_health_cmd }}" \
-      --health-interval={{ wazuh_manager_health_interval }} \
-      --health-timeout={{ wazuh_manager_health_timeout }} \
-      --health-retries={{ wazuh_manager_health_retries }} \
+      --health-cmd="{{ wazuh_manager_container_health_cmd }}" \
+      --health-interval={{ wazuh_manager_container_health_interval }} \
+      --health-timeout={{ wazuh_manager_container_health_timeout }} \
+      --health-retries={{ wazuh_manager_container_health_retries }} \
       {% if wazuh_manager_container_extra_arguments | length > 0 %}
       {{ wazuh_manager_container_extra_arguments | join(' ') }} \
       {% endif %}

@@ -94,6 +94,9 @@ wazuh_manager_api_host_bind_port: ""
 # The port number in the container
 wazuh_manager_api_port: 55000
 
+# The manager container does not currently support being run in read-only operation
+wazuh_manager_container_read_only: false
+
 wazuh_manager_container_memory_limit: ""
 wazuh_manager_container_memory_swap_limit: ""
 
@@ -106,10 +109,10 @@ wazuh_manager_indexer_password: "{{ wazuh_indexer_admin_password }}"
 wazuh_manager_api_username: "wazuh-wui"
 wazuh_manager_api_password: ""
 
-wazuh_manager_health_cmd: "curl -k -s -o /dev/null https://localhost:{{ wazuh_manager_api_port }} || exit 1"
-wazuh_manager_health_interval: "15s"
-wazuh_manager_health_timeout: "5s"
-wazuh_manager_health_retries: 5
+wazuh_manager_container_health_cmd: "curl -k -s -o /dev/null https://localhost:{{ wazuh_manager_api_port }} || exit 1"
+wazuh_manager_container_health_interval: "15s"
+wazuh_manager_container_health_timeout: "5s"
+wazuh_manager_container_health_retries: 5
 
 wazuh_manager_filebeat_ssl_verification_mode: "full"
 
@@ -202,14 +205,17 @@ wazuh_indexer_kibanaserver_password_salt: ""
 wazuh_indexer_http_host_bind_port: ""
 wazuh_indexer_transport_host_bind_port: ""
 
+# The indexer container does not currently support being run in read-only operation
+wazuh_indexer_container_read_only: false
+
 wazuh_indexer_container_memory_limit: ""
 wazuh_indexer_container_memory_swap_limit: ""
 
-wazuh_indexer_health_cmd: curl -fks https://localhost:9200/_plugins/_security/health | grep -q '\"status\":\"UP\"'
-wazuh_indexer_health_interval: "30s"
-wazuh_indexer_health_timeout: "10s"
-wazuh_indexer_health_retries: 5
-wazuh_indexer_health_start_period: "60s"
+wazuh_indexer_container_health_cmd: curl -fks https://localhost:9200/_plugins/_security/health | grep -q '\"status\":\"UP\"'
+wazuh_indexer_container_health_interval: "30s"
+wazuh_indexer_container_health_timeout: "10s"
+wazuh_indexer_container_health_retries: 5
+wazuh_indexer_container_health_start_period: "60s"
 
 # Default Wazuh indexer OpenSearch configuration template which covers the generic use case.
 # You can customize it by controlling the various variables inside it.
@@ -332,6 +338,9 @@ wazuh_dashboard_http_host_bind_port: ""
 # The port number in the container
 wazuh_dashboard_http_port: 5601
 
+# The dashboard container does not currently support being run in read-only operation
+wazuh_dashboard_container_read_only: false
+
 wazuh_dashboard_container_memory_limit: ""
 wazuh_dashboard_container_memory_swap_limit: ""
 
@@ -344,11 +353,11 @@ wazuh_dashboard_api_username: "{{ wazuh_manager_api_username }}"
 wazuh_dashboard_api_password: "{{ wazuh_manager_api_password }}"
 wazuh_dashboard_api_url: "https://wazuh.manager"
 
-wazuh_dashboard_health_cmd: "curl -k -s -o /dev/null http://localhost:{{ wazuh_dashboard_http_port }}/login"
-wazuh_dashboard_health_interval: "30s"
-wazuh_dashboard_health_timeout: "10s"
-wazuh_dashboard_health_retries: 3
-wazuh_dashboard_health_start_period: "30s"
+wazuh_dashboard_container_health_cmd: "curl -k -s -o /dev/null http://localhost:{{ wazuh_dashboard_http_port }}/login"
+wazuh_dashboard_container_health_interval: "30s"
+wazuh_dashboard_container_health_timeout: "10s"
+wazuh_dashboard_container_health_retries: 3
+wazuh_dashboard_container_health_start_period: "30s"
 
 # Default Wazuh dashboard OpenSearch Dashboards configuration template which covers the generic use case.
 # You can customize it by controlling the various variables inside it.
