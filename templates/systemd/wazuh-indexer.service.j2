@@ -26,6 +26,9 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --rm \
       --name={{ wazuh_indexer_identifier }} \
       --log-driver=none \
+      {% if wazuh_indexer_container_cap_drop_all %}
+      --cap-drop=ALL \
+      {% endif %}
       {% if wazuh_indexer_container_read_only %}
       --read-only \
       {% endif %}
