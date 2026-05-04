@@ -4,9 +4,9 @@ SPDX-FileCopyrightText: 2026 spatterlight
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-## Updating the role for a new Wazuh release
+# Updating the role for a new Wazuh release
 
-### Overview
+## Overview
 
 Bumping `wazuh_version` in `defaults/main.yml` is not enough on its own. The role ships
 upstream Wazuh configuration as:
@@ -26,21 +26,21 @@ and hostnames with Jinja2 variables, and some intentionally diverge from upstrea
 Renovate watches the `wazuh/wazuh-manager` Docker tag and opens version-bump PRs
 automatically. Manual reconciliation of configuration files is still required.
 
-### When to run this procedure
+## When to run this procedure
 
 On each new upstream Wazuh release.
 
-### Prerequisites
+## Prerequisites
 
 - A working clone of [wazuh/wazuh-docker](https://github.com/wazuh/wazuh-docker)
 
-### Step 1 — Bump `wazuh_version`
+## Step 1 — Bump `wazuh_version`
 
 Edit `defaults/main.yml` and set `wazuh_version` to the new release. Renovate's PR may
 handle this. This single variable drives all three component image tags (manager, indexer,
 dashboard) via `wazuh_*_container_image_tag`.
 
-### Step 2 — Check out the matching wazuh-docker tag
+## Step 2 — Check out the matching wazuh-docker tag
 
 ```sh
 cd /path/to/wazuh-docker
@@ -51,7 +51,7 @@ git checkout v<new-version>
 All diffs in the steps below compare files from `single-node/` at this tag against the
 role's files.
 
-### Step 3 — Reconcile `files/conf/manager/wazuh_manager.conf`
+## Step 3 — Reconcile `files/conf/manager/wazuh_manager.conf`
 
 ```sh
 diff single-node/config/wazuh_cluster/wazuh_manager.conf \
@@ -60,7 +60,7 @@ diff single-node/config/wazuh_cluster/wazuh_manager.conf \
 
 Default action: copy the new upstream file verbatim.
 
-### Step 4 — Reconcile templates
+## Step 4 — Reconcile templates
 
 For each template, diff the corresponding upstream file against the role template and port
 any non-Jinja2 changes. Do **not** replace Jinja2 expressions with hardcoded values.
@@ -75,6 +75,7 @@ diff single-node/config/wazuh_dashboard/opensearch_dashboards.yml \
 ```
 
 Preserve these intentional divergences:
+
 - `server.port: {{ wazuh_dashboard_http_port }}` — not the hardcoded `5601`
 - `server.ssl.enabled: false` — Traefik terminates TLS for the role; upstream has `true`
 - The role uses YAML block-sequence list format (`- "value"`) instead of upstream's inline
@@ -92,6 +93,7 @@ diff single-node/config/wazuh_dashboard/wazuh.yml \
 ```
 
 Preserve all four Jinja2 substitutions — none of the upstream values should be hardcoded:
+
 - `url: "{{ wazuh_dashboard_api_url }}"`
 - `port: {{ wazuh_manager_api_port }}`
 - `username: "{{ wazuh_dashboard_api_username }}"`
@@ -126,6 +128,7 @@ diff single-node/config/wazuh_indexer/internal_users.yml \
 Two intentional divergences to preserve:
 
 1. **Passwords are templated**, not literal bcrypt hashes:
+
    ```yaml
    admin:
      hash: "{{ wazuh_indexer_admin_password | password_hash('bcrypt', salt=wazuh_indexer_admin_password_salt) }}"
@@ -148,7 +151,7 @@ Diff each service's `environment:` list against the corresponding `env.j2` to ch
 any variables were added or removed upstream. All values in the role are Jinja2 variables —
 do not copy hardcoded credentials from docker-compose.
 
-### Step 5 — Verify
+## Step 5 — Verify
 
 ```sh
 just lint
