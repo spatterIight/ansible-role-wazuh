@@ -91,7 +91,7 @@
         - "{{ wazuh_certs_path }}/indexer"
         - "{{ wazuh_certs_path }}/dashboard"
 
-    - name: Distribute manager certificates (owner 999:999)
+    - name: Distribute manager certificates
       ansible.builtin.copy:
         src: "{{ wazuh_certs_path }}/output/{{ item.src }}"
         dest: "{{ wazuh_certs_path }}/manager/{{ item.dest }}"
@@ -105,7 +105,7 @@
         - {src: wazuh.manager.pem, dest: wazuh.manager.pem}
         - {src: wazuh.manager-key.pem, dest: wazuh.manager-key.pem}
 
-    - name: Distribute indexer certificates (owner 1000:1000)
+    - name: Distribute indexer certificates
       ansible.builtin.copy:
         src: "{{ wazuh_certs_path }}/output/{{ item }}"
         dest: "{{ wazuh_certs_path }}/indexer/{{ item }}"
@@ -120,7 +120,7 @@
         - admin.pem
         - admin-key.pem
 
-    - name: Distribute dashboard certificates (owner 1000:1000)
+    - name: Distribute dashboard certificates
       ansible.builtin.copy:
         src: "{{ wazuh_certs_path }}/output/{{ item }}"
         dest: "{{ wazuh_certs_path }}/dashboard/{{ item }}"

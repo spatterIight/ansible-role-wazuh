@@ -94,6 +94,10 @@ wazuh_manager_api_host_bind_port: ""
 # The port number in the container
 wazuh_manager_api_port: 55000
 
+# The manager container does not currently support non-root user operation
+wazuh_manager_container_uid: ""
+wazuh_manager_container_gid: ""
+
 # The manager container does not currently support being run with all capabilities dropped
 # NOTE: There is probably some combination of minimal added capabilities that works,
 # but I was un-able to discover it after a few tries
@@ -209,6 +213,9 @@ wazuh_indexer_kibanaserver_password_salt: ""
 # Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:2586"), or empty string to not expose.
 wazuh_indexer_http_host_bind_port: ""
 wazuh_indexer_transport_host_bind_port: ""
+
+wazuh_indexer_container_uid: "{{ wazuh_uid }}"
+wazuh_indexer_container_gid: "{{ wazuh_gid }}"
 
 wazuh_indexer_container_cap_drop_all: true
 
@@ -344,6 +351,9 @@ wazuh_dashboard_http_host_bind_port: ""
 
 # The port number in the container
 wazuh_dashboard_http_port: 5601
+
+wazuh_dashboard_container_uid: "{{ wazuh_uid }}"
+wazuh_dashboard_container_gid: "{{ wazuh_gid }}"
 
 wazuh_dashboard_container_cap_drop_all: true
 

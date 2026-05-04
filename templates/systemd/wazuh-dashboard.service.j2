@@ -26,6 +26,9 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --rm \
       --name={{ wazuh_dashboard_identifier }} \
       --log-driver=none \
+      {% if wazuh_dashboard_container_uid and wazuh_dashboard_container_gid %}
+      --user={{ wazuh_dashboard_container_uid }}:{{ wazuh_dashboard_container_gid }} \
+      {% endif %}
       {% if wazuh_dashboard_container_cap_drop_all %}
       --cap-drop=ALL \
       {% endif %}
