@@ -73,6 +73,13 @@
     state: absent
   changed_when: false
 
+- name: Remove XML declaration added by lxml from Wazuh manager config
+  ansible.builtin.lineinfile:
+    path: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
+    regexp: "^<\\?xml"
+    state: absent
+  changed_when: false
+
 - name: Ensure Wazuh manager ossec.conf is installed
   ansible.builtin.copy:
     src: "{{ wazuh_manager_tempdir.path }}/wazuh_manager.conf"
