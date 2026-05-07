@@ -5,7 +5,7 @@ on: [push, pull_request]
 
 jobs:
   molecule:
-    name: molecule [${{ matrix.distro }}]
+    name: molecule [${{ matrix.distro }}] [${{ matrix.scenario }}]
     runs-on: ubuntu-latest
 
     strategy:
@@ -15,6 +15,9 @@ jobs:
           - ubuntu2404
           - debian13
           - debian12
+        scenario:
+          - default
+          - features
       fail-fast: false
 
     env:
@@ -55,4 +58,4 @@ jobs:
 
       - name: Run molecule
         working-directory: wazuh
-        run: molecule test
+        run: molecule test --scenario-name ${{ matrix.scenario }}

@@ -1,0 +1,127 @@
+# SPDX-FileCopyrightText: 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Verify
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for wazuh-indexer to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: wazuh-indexer.service
+      register: indexer_service
+      until: indexer_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert wazuh-indexer is active
+      ansible.builtin.assert:
+        that: indexer_service.status.ActiveState == 'active'
+        fail_msg: "wazuh-indexer.service not active ({{ indexer_service.status.ActiveState }})"
+        success_msg: "wazuh-indexer.service is active"
+
+    - name: Wait for wazuh-manager to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: wazuh-manager.service
+      register: manager_service
+      until: manager_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert wazuh-manager is active
+      ansible.builtin.assert:
+        that: manager_service.status.ActiveState == 'active'
+        fail_msg: "wazuh-manager.service not active ({{ manager_service.status.ActiveState }})"
+        success_msg: "wazuh-manager.service is active"
+
+    - name: Wait for wazuh-dashboard to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: wazuh-dashboard.service
+      register: dashboard_service
+      until: dashboard_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert wazuh-dashboard is active
+      ansible.builtin.assert:
+        that: dashboard_service.status.ActiveState == 'active'
+        fail_msg: "wazuh-dashboard.service not active ({{ dashboard_service.status.ActiveState }})"
+        success_msg: "wazuh-dashboard.service is active"
+
+    - name: Wait for wazuh-indexer container to become healthy (up to 5m)
+      community.docker.docker_container_info:
+        name: wazuh-indexer
+      register: indexer_info
+      until: >-
+        indexer_info.container is not none and
+        indexer_info.container.State.Health.Status in ['healthy', 'unhealthy']
+      retries: 60
+      delay: 5
+
+    - name: Assert wazuh-indexer container is healthy
+      ansible.builtin.assert:
+        that: indexer_info.container.State.Health.Status == 'healthy'
+        fail_msg: "wazuh-indexer container health: {{ indexer_info.container.State.Health.Status }}"
+        success_msg: "wazuh-indexer container is healthy"
+
+    - name: Wait for wazuh-manager container to become healthy (up to 5m)
+      community.docker.docker_container_info:
+        name: wazuh-manager
+      register: manager_info
+      until: >-
+        manager_info.container is not none and
+        manager_info.container.State.Health.Status in ['healthy', 'unhealthy']
+      retries: 60
+      delay: 5
+
+    - name: Assert wazuh-manager container is healthy
+      ansible.builtin.assert:
+        that: manager_info.container.State.Health.Status == 'healthy'
+        fail_msg: "wazuh-manager container health: {{ manager_info.container.State.Health.Status }}"
+        success_msg: "wazuh-manager container is healthy"
+
+    - name: Wait for wazuh-dashboard container to become healthy (up to 5m)
+      community.docker.docker_container_info:
+        name: wazuh-dashboard
+      register: dashboard_info
+      until: >-
+        dashboard_info.container is not none and
+        dashboard_info.container.State.Health.Status in ['healthy', 'unhealthy']
+      retries: 60
+      delay: 5
+
+    - name: Assert wazuh-dashboard container is healthy
+      ansible.builtin.assert:
+        that: dashboard_info.container.State.Health.Status == 'healthy'
+        fail_msg: "wazuh-dashboard container health: {{ dashboard_info.container.State.Health.Status }}"
+        success_msg: "wazuh-dashboard container is healthy"
+
+    - name: Wait for dashboard HTTP endpoint to respond (up to 120s)
+      ansible.builtin.uri:
+        url: "http://localhost:{{ wazuh_dashboard_http_host_bind_port }}/app/login"
+        method: GET
+        validate_certs: false
+        status_code: 200
+      register: dashboard_http
+      until: dashboard_http.status == 200
+      retries: 24
+      delay: 5
+
+    - name: Assert dashboard responds
+      ansible.builtin.assert:
+        that: dashboard_http.status == 200
+        fail_msg: "Dashboard did not respond ({{ dashboard_http.status | default('no response') }})"
+        success_msg: "Dashboard responded with 200"
+
+    - name: Show service status summary
+      ansible.builtin.debug:
+        msg:
+          - "wazuh-indexer systemd: {{ indexer_service.status.ActiveState }}"
+          - "wazuh-manager systemd: {{ manager_service.status.ActiveState }}"
+          - "wazuh-dashboard systemd: {{ dashboard_service.status.ActiveState }}"
+          - "wazuh-indexer health: {{ indexer_info.container.State.Health.Status }}"
+          - "wazuh-manager health: {{ manager_info.container.State.Health.Status }}"
+          - "wazuh-dashboard health: {{ dashboard_info.container.State.Health.Status }}"
+          - "dashboard HTTP: {{ dashboard_http.status }}"

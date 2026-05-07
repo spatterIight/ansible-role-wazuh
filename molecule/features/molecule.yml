@@ -10,7 +10,7 @@ dependency:
 driver:
   name: docker
 platforms:
-  - name: wazuh-${MOLECULE_DISTRO:-ubuntu2604}-default
+  - name: wazuh-${MOLECULE_DISTRO:-ubuntu2604}-features
     image: "geerlingguy/docker-${MOLECULE_DISTRO:-ubuntu2604}-ansible:latest"
     command: ${MOLECULE_DOCKER_COMMAND:-""}
     volumes:
@@ -40,6 +40,37 @@ provisioner:
         wazuh_dashboard_http_host_bind_port: "80"
 
         wazuh_indexer_opensearch_java_opts: "-Xms512m -Xmx512m"
+
+        wazuh_enrollment_password: eHpdDqve4PdYlmEtcLRnWzP2yEVDGMv3oUKlwsVrev81EQxHD2Rpm37HfDCnuk2X
+
+        wazuh_agent_conf: |
+          <agent_config name="92603de31548">
+            <labels>
+              <label key="aws.instance-id">i-052a1838c</label>
+              <label key="aws.sec-group">sg-1103</label>
+              <label key="network.ip">172.17.0.0</label>
+              <label key="network.mac">02:42:ac:11:00:02</label>
+              <label key="installation" hidden="yes">July 1st, 2024</label>
+            </labels>
+          </agent_config>
+
+        wazuh_rules:
+          - file: local_rules.xml
+            contents: |
+              <group name="local,">
+                <rule id="100001" level="3">
+                  <description>Custom rule example</description>
+                </rule>
+              </group>
+
+        wazuh_integrations:
+          - name: custom-element
+            src: "{{ role_path }}/files/integrations/element/custom-element"
+            mode: "0750"
+          - name: custom-element.py
+            src: "{{ role_path }}/files/integrations/element/custom-element.py"
+            mode: "0750"
+
   env:
     # This is a hack to resolve https://github.com/ansible/molecule/issues/4391
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..:/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/roles

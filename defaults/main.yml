@@ -647,7 +647,10 @@ wazuh_rules: []
 # Example:
 # wazuh_integrations:
 #   - name: custom-element
-#     src: /path/on/controller/custom-element
+#     src: "{{ role_path }}/files/integrations/element/custom-element"
+#     mode: "0750"
+#   - name: custom-element.py
+#     src: "{{ role_path }}/files/integrations/element/custom-element.py"
 #     mode: "0750"
 wazuh_integrations: []
 

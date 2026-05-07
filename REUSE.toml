@@ -20,7 +20,7 @@ path = [
     "meta/main.yml",
     ".python-version",
     "molecule/requirements.txt",
-    "molecule/default/requirements.yml"
+    "molecule/**/requirements.yml"
 ]
 SPDX-FileCopyrightText = "NONE"
 SPDX-License-Identifier = "CC0-1.0"
@@ -35,11 +35,11 @@ path = [
 SPDX-FileCopyrightText = "Wazuh Inc."
 SPDX-License-Identifier = "GPL-2.0-or-later"
 
-# Upstream integration examples (GPL-2.0-or-later)
+# Upstream Wazuh integration examples (GPL-2.0-or-later)
 [[annotations]]
 path = [
-    "files/integrations/examples/custom-element",
-    "files/integrations/examples/custom-element.py"
+    "files/integrations/element/custom-element",
+    "files/integrations/element/custom-element.py"
 ]
 SPDX-FileCopyrightText = "Wazuh Inc."
 SPDX-License-Identifier = "GPL-2.0-or-later"
