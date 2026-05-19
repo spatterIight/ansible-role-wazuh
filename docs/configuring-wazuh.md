@@ -170,7 +170,7 @@ See the [docs](https://documentation.wazuh.com/current/user-manual/reference/cen
 
 ## Custom integrations
 
-Wazuh integrations forward alerts to external HTTP webhooks. Setting one up is a two-step process: deploy the integration script, then register it in `ossec.conf`. Any service that accepts an HTTPS POST with a JSON alert body can be used; the `custom-element` scripts included with this role target an [Element](https://element.io/) room via [maubot](https://github.com/maubot/maubot).
+Wazuh integrations forward alerts to external HTTP webhooks. Setting one up is a two-step process: deploy the integration script, then register it in `ossec.conf`. Any service that accepts an HTTPS POST with a JSON alert body can be used; the `custom-element` scripts included with this role target an [Element](https://element.io/) room via a [maubot](https://github.com/maubot/maubot) bot, like [alertbot](https://github.com/moan0s/alertbot).
 
 **Step 1 — deploy the integration scripts** using `wazuh_integrations`:
 
