@@ -170,7 +170,9 @@ See the [docs](https://documentation.wazuh.com/current/user-manual/reference/cen
 
 ## Custom integrations
 
-Copy integration scripts into the manager's integrations directory:
+Wazuh integrations forward alerts to external HTTP webhooks. Setting one up is a two-step process: deploy the integration script, then register it in `ossec.conf`. Any service that accepts an HTTPS POST with a JSON alert body can be used; the `custom-element` scripts included with this role target an [Element](https://element.io/) room via [maubot](https://github.com/maubot/maubot).
+
+**Step 1 — deploy the integration scripts** using `wazuh_integrations`:
 
 ```yaml
 wazuh_integrations:
@@ -182,17 +184,26 @@ wazuh_integrations:
     mode: "0750"
 ```
 
-## ossec.conf customization
-
-The manager's `ossec.conf` is managed via XPath replacements. Add your own:
+**Step 2 — register the integration in `ossec.conf`** using `wazuh_manager_ossec_xml_replacements_custom` (the role's XPath-based `ossec.conf` customization mechanism — see [ossec.conf customization](#ossec-conf-customization) below):
 
 ```yaml
 wazuh_manager_ossec_xml_replacements_custom:
-  - xpath: "/ossec_config/global/email_notification"
-    value: "yes"
-  - xpath: "/ossec_config/global/email_to"
-    value: "alerts@example.com"
+  - xpath: "/ossec_config/integration/name"
+    value: "custom-element"
+  - xpath: "/ossec_config/integration/hook_url"
+    value: "https://matrix.sysx.io/_matrix/maubot/plugin/bot.maubot.alertbot/webhook/YOUR-ROOM-ID"
+  - xpath: "/ossec_config/integration/alert_format"
+    value: "json"
+  - xpath: "/ossec_config/integration/level"
+    value: "10"
 ```
+
+- `name` must match the `name` field in `wazuh_integrations` — that is how Wazuh locates and executes the script.
+- `hook_url` can be any HTTPS endpoint that accepts a JSON POST (Element/maubot, Slack, Discord, a generic ingest service, etc.). The URL above is an example Element/maubot webhook — replace `YOUR-ROOM-ID` with your room's Matrix ID.
+- `level` sets the minimum alert severity to forward; `10` sends all alerts at level 10 or higher.
+- The XPath entries create the `<integration>` block inside `ossec.conf` if it does not already exist — no changes to the role itself are required.
+
+See the [upstream documentation](https://documentation.wazuh.com/current/user-manual/manager/integration-with-external-apis.html#custom-integration) for the full list of `<integration>` options.
 
 ## Deploying agents via wazuh-ansible
 
