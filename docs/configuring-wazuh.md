@@ -191,7 +191,7 @@ wazuh_manager_ossec_xml_replacements_custom:
   - xpath: "/ossec_config/integration/name"
     value: "custom-element"
   - xpath: "/ossec_config/integration/hook_url"
-    value: "https://matrix.sysx.io/_matrix/maubot/plugin/bot.maubot.alertbot/webhook/YOUR-ROOM-ID"
+    value: "https://matrix.domain.com/_matrix/maubot/plugin/alertbot/webhook/YOUR-ROOM-ID"
   - xpath: "/ossec_config/integration/alert_format"
     value: "json"
   - xpath: "/ossec_config/integration/level"
