@@ -55,7 +55,7 @@ To enable Wazuh with this role, add the following configuration to your `vars.ym
 wazuh_enabled: true
 
 # Passwords used to authenticate with the dashboard and for components to authenticate between each other
-# Generate them using `pwgen -s 63 4`, and manually include at least one special character, or some other way.
+# Generate them using `pwgen -s 63 3`, and manually include at least one special character, or some other way.
 wazuh_indexer_admin_password: ""
 wazuh_indexer_kibanaserver_password: ""
 wazuh_manager_api_password: ""
@@ -147,8 +147,6 @@ wazuh_rules:
       </group>
 ```
 
-Rule files are written to `{{ wazuh_data_path }}/manager/etc/rules/` and mounted into the container.
-
 ## Centralized configuration (agent.conf)
 
 Set `wazuh_agent_conf` to configure the agent.conf file:
@@ -170,7 +168,7 @@ See the [docs](https://documentation.wazuh.com/current/user-manual/reference/cen
 
 ## Custom integrations
 
-Wazuh integrations forward alerts to external HTTP webhooks. Setting one up is a two-step process: deploy the integration script, then register it in `ossec.conf`. Any service that accepts an HTTPS POST with a JSON alert body can be used; the `custom-element` scripts included with this role target an [Element](https://element.io/) room via a [maubot](https://github.com/maubot/maubot) bot, like [alertbot](https://github.com/moan0s/alertbot).
+Wazuh integrations forward alerts to external HTTP webhooks. Any service that accepts an HTTP POST with a JSON body can be used; the `custom-element` scripts included with this role target an [Element](https://element.io/) room via a [maubot](https://github.com/maubot/maubot) bot, like [alertbot](https://github.com/moan0s/alertbot).
 
 **Step 1 — deploy the integration scripts** using `wazuh_integrations`:
 
@@ -184,7 +182,7 @@ wazuh_integrations:
     mode: "0750"
 ```
 
-**Step 2 — register the integration in `ossec.conf`** using `wazuh_manager_ossec_xml_replacements_custom` (the role's XPath-based `ossec.conf` customization mechanism):
+**Step 2 — register the integration in `ossec.conf`** using `wazuh_manager_ossec_xml_replacements_custom`:
 
 ```yaml
 wazuh_manager_ossec_xml_replacements_custom:
@@ -201,7 +199,6 @@ wazuh_manager_ossec_xml_replacements_custom:
 - `name` must match the `name` field in `wazuh_integrations` — that is how Wazuh locates and executes the script.
 - `hook_url` can be any HTTPS endpoint that accepts a JSON POST (Element/maubot, Slack, Discord, a generic ingest service, etc.). The URL above is an example Element/maubot webhook — replace `YOUR-ROOM-ID` with your room's Matrix ID.
 - `level` sets the minimum alert severity to forward; `10` sends all alerts at level 10 or higher.
-- The XPath entries create the `<integration>` block inside `ossec.conf` if it does not already exist — no changes to the role itself are required.
 
 See the [upstream documentation](https://documentation.wazuh.com/current/user-manual/manager/integration-with-external-apis.html#custom-integration) for the full list of `<integration>` options.
 
@@ -243,4 +240,4 @@ User guide is available on [this page](https://documentation.wazuh.com/current/u
 
 ### Check the service's logs
 
-You can find the logs in [systemd-journald](https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html) by logging in to the server with SSH and running `journalctl -fu wazuh` (or how you/your playbook named the service, e.g. `mash-wazuh`).
+You can find the logs in [systemd-journald](https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html) by logging in to the server with SSH and running `journalctl -fu wazuh-(manager/dashboard/indexer)` (or how you/your playbook named the service, e.g. `mash-wazuh-(manager/dashboard/indexer)`).
