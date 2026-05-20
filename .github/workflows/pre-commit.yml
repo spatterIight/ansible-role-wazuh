@@ -37,7 +37,7 @@ jobs:
 
       - name: Install Ansible collections
         run: |
-          pip install ansible-core
+          python -m pip install ansible-core
           ansible-galaxy collection install -r molecule/default/requirements.yml
 
       - name: Run prek hooks
