@@ -19,12 +19,62 @@
   ansible.builtin.systemd:
     daemon_reload: true
 
+- name: Ensure Wazuh support files do not exist
+  ansible.builtin.file:
+    path: "{{ wazuh_base_path }}/{{ item }}"
+    state: absent
+  with_items:
+    - manager.env
+    - indexer.env
+    - dashboard.env
+    - dashboard.labels
+
+- name: Ensure Wazuh certs path does not exist if empty
+  ansible.builtin.command:
+    cmd: "rmdir {{ wazuh_certs_path }}"
+  register: wazuh_certs_path_deletion_result
+  changed_when: wazuh_certs_path_deletion_result.rc == 0
+  failed_when: false
+
+- name: Ensure Wazuh data path does not exist if empty
+  ansible.builtin.command:
+    cmd: "rmdir {{ wazuh_data_path }}"
+  register: wazuh_data_path_deletion_result
+  changed_when: wazuh_data_path_deletion_result.rc == 0
+  failed_when: false
+
+- name: Ensure Wazuh base path does not exist if empty
+  ansible.builtin.command:
+    cmd: "rmdir {{ wazuh_base_path }}"
+  register: wazuh_base_path_deletion_result
+  changed_when: wazuh_base_path_deletion_result.rc == 0
+  failed_when: false
+
+- name: Ensure Wazuh container network does not exist
+  when: wazuh_container_network_deletion_enabled
+  block:
+    - name: Ensure Wazuh container network does not exist via community.docker.docker_network
+      when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
+      community.docker.docker_network:
+        name: "{{ wazuh_container_network }}"
+        state: absent
+      failed_when: false
+
+    - name: Ensure Wazuh container network does not exist via ansible.builtin.command
+      when: devture_systemd_docker_base_container_network_creation_method == 'command'
+      ansible.builtin.command:
+        cmd: "{{ devture_systemd_docker_base_host_command_docker }} network rm {{ wazuh_container_network }}"
+      register: wazuh_network_removal_result
+      changed_when: wazuh_container_network in wazuh_network_removal_result.stdout
+      failed_when: false
+
 - name: Check existence of Wazuh local data path
   ansible.builtin.stat:
     path: "{{ wazuh_data_path }}"
   register: wazuh_data_path_stat
 
-- name: Notify about remaining Wazuh data
+# We just want to notify the user. Deleting data is too destructive.
+- name: Inject the message about the remaining Wazuh local data path
   when: wazuh_data_path_stat.stat.exists | bool
   ansible.builtin.set_fact:
     devture_playbook_runtime_messages_list: |
@@ -36,17 +86,20 @@
         ]
       }}
 
-- name: Remove Wazuh container network via community.docker.docker_network
-  when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
-  community.docker.docker_network:
-    name: "{{ wazuh_container_network }}"
-    state: absent
-  failed_when: false
+- name: Check existence of Wazuh certs path
+  ansible.builtin.stat:
+    path: "{{ wazuh_certs_path }}"
+  register: wazuh_certs_path_stat
 
-- name: Remove Wazuh container network via ansible.builtin.command
-  when: devture_systemd_docker_base_container_network_creation_method == 'command'
-  ansible.builtin.command:
-    cmd: "{{ devture_systemd_docker_base_host_command_docker }} network rm {{ wazuh_container_network }}"
-  register: wazuh_network_removal_result
-  changed_when: wazuh_container_network in wazuh_network_removal_result.stdout
-  failed_when: false
+# We just want to notify the user. Deleting data is too destructive.
+- name: Inject the message about the remaining Wazuh certs path
+  when: wazuh_certs_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local Wazuh instance has been removed, certificates remain in `" + wazuh_certs_path + "`. Feel free to delete it."
+        ]
+      }}

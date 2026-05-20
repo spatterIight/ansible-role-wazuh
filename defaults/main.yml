@@ -46,6 +46,9 @@ wazuh_path_prefix: /
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 wazuh_container_network: "{{ wazuh_identifier }}"
 
+# Control if the container network is deleted on uninstalling.
+wazuh_container_network_deletion_enabled: true
+
 ########################################################################
 #                                                                      #
 # manager                                                              #
@@ -142,13 +145,13 @@ wazuh_manager_ossec_xml_replacements_default:
 wazuh_manager_ossec_xml_replacements: "{{ wazuh_manager_ossec_xml_replacements_default + wazuh_manager_ossec_xml_replacements_custom }}"
 
 # List of systemd services that the manager systemd service depends on
-wazuh_manager_systemd_required_services_list: "{{ wazuh_manager_systemd_required_services_list_default + wazuh_manager_systemd_required_services_list_auto + wazuh_manager_systemd_required_services_list_custom }}"
+wazuh_manager_systemd_required_services_list: "{{ (wazuh_manager_systemd_required_services_list_default + wazuh_manager_systemd_required_services_list_auto + wazuh_manager_systemd_required_services_list_custom) | unique }}"
 wazuh_manager_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 wazuh_manager_systemd_required_services_list_auto: []
 wazuh_manager_systemd_required_services_list_custom: []
 
 # List of systemd services that the manager systemd service wants
-wazuh_manager_systemd_wanted_services_list: "{{ wazuh_manager_systemd_wanted_services_list_default + wazuh_manager_systemd_wanted_services_list_auto + wazuh_manager_systemd_wanted_services_list_custom }}"
+wazuh_manager_systemd_wanted_services_list: "{{ (wazuh_manager_systemd_wanted_services_list_default + wazuh_manager_systemd_wanted_services_list_auto + wazuh_manager_systemd_wanted_services_list_custom) | unique }}"
 wazuh_manager_systemd_wanted_services_list_default: []
 wazuh_manager_systemd_wanted_services_list_auto: []
 wazuh_manager_systemd_wanted_services_list_custom: []
@@ -286,13 +289,13 @@ wazuh_indexer_internal_users_yml_extension: "{{ wazuh_indexer_internal_users_yml
 wazuh_indexer_internal_users_yml: "{{ wazuh_indexer_internal_users_yml_yaml | from_yaml | combine(wazuh_indexer_internal_users_yml_extension, recursive=True) }}"
 
 # List of systemd services that the indexer systemd service depends on
-wazuh_indexer_systemd_required_services_list: "{{ wazuh_indexer_systemd_required_services_list_default + wazuh_indexer_systemd_required_services_list_auto + wazuh_indexer_systemd_required_services_list_custom }}"
+wazuh_indexer_systemd_required_services_list: "{{ (wazuh_indexer_systemd_required_services_list_default + wazuh_indexer_systemd_required_services_list_auto + wazuh_indexer_systemd_required_services_list_custom) | unique }}"
 wazuh_indexer_systemd_required_services_list_default: "{{ [devture_systemd_docker_base_docker_service_name] if devture_systemd_docker_base_docker_service_name else [] }}"
 wazuh_indexer_systemd_required_services_list_auto: []
 wazuh_indexer_systemd_required_services_list_custom: []
 
 # List of systemd services that the indexer systemd service wants
-wazuh_indexer_systemd_wanted_services_list: "{{ wazuh_indexer_systemd_wanted_services_list_default + wazuh_indexer_systemd_wanted_services_list_auto + wazuh_indexer_systemd_wanted_services_list_custom }}"
+wazuh_indexer_systemd_wanted_services_list: "{{ (wazuh_indexer_systemd_wanted_services_list_default + wazuh_indexer_systemd_wanted_services_list_auto + wazuh_indexer_systemd_wanted_services_list_custom) | unique }}"
 wazuh_indexer_systemd_wanted_services_list_default: []
 wazuh_indexer_systemd_wanted_services_list_auto: []
 wazuh_indexer_systemd_wanted_services_list_custom: []
