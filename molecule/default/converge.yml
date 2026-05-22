@@ -3,12 +3,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Include roles
+- name: Include roles for Wazuh Molecule tests
   hosts: all
   become: true
   gather_facts: true
   tasks:
-    - name: Include roles
+    - name: Include roles for Wazuh Molecule tests
       ansible.builtin.include_role:
         name: "{{ role_name }}"
         public: true
@@ -37,21 +37,21 @@
         - wazuh-manager
         - wazuh-dashboard
 
-    - name: Reload systemd daemon
+    - name: Ensure systemd daemon is reloaded
       ansible.builtin.systemd_service:
         daemon_reload: true
 
-    - name: Start wazuh-indexer service
+    - name: Ensure wazuh-indexer systemd service is started
       ansible.builtin.systemd_service:
         name: wazuh-indexer.service
         state: started
 
-    - name: Start wazuh-manager service
+    - name: Ensure wazuh-manager systemd service is started
       ansible.builtin.systemd_service:
         name: wazuh-manager.service
         state: started
 
-    - name: Start wazuh-dashboard service
+    - name: Ensure wazuh-dashboard systemd service is started
       ansible.builtin.systemd_service:
         name: wazuh-dashboard.service
         state: started

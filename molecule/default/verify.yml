@@ -3,7 +3,7 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Verify
+- name: Verify Wazuh systemd service
   hosts: all
   become: true
   gather_facts: false
@@ -115,7 +115,7 @@
         fail_msg: "Dashboard did not respond ({{ dashboard_http.status | default('no response') }})"
         success_msg: "Dashboard responded with 200"
 
-    - name: Show service status summary
+    - name: Show Wazuh systemd services status summary
       ansible.builtin.debug:
         msg:
           - "wazuh-indexer systemd: {{ indexer_service.status.ActiveState }}"
