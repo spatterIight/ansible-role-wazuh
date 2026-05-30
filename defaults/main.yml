@@ -458,7 +458,6 @@ wazuh_dashboard_container_labels_traefik_additional_request_headers_custom: {}
 # CSP is intentionally omitted — Wazuh Dashboard's SPA may require tuning before adding one.
 wazuh_http_header_x_xss_protection: "1; mode=block"
 wazuh_http_header_x_content_type_options: nosniff
-wazuh_http_header_x_frame_options: SAMEORIGIN
 wazuh_http_header_strict_transport_security: "max-age=31536000; includeSubDomains"
 
 # Controls which additional headers to attach to all HTTP responses.
@@ -469,7 +468,6 @@ wazuh_dashboard_container_labels_traefik_additional_response_headers_auto: |
     {}
     | combine({'X-XSS-Protection': wazuh_http_header_x_xss_protection} if wazuh_http_header_x_xss_protection else {})
     | combine({'X-Content-Type-Options': wazuh_http_header_x_content_type_options} if wazuh_http_header_x_content_type_options else {})
-    | combine({'X-Frame-Options': wazuh_http_header_x_frame_options} if wazuh_http_header_x_frame_options else {})
     | combine({'Strict-Transport-Security': wazuh_http_header_strict_transport_security} if wazuh_http_header_strict_transport_security and wazuh_dashboard_container_labels_traefik_tls else {})
   }}
 wazuh_dashboard_container_labels_traefik_additional_response_headers_custom: {}
