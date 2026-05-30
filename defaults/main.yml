@@ -196,12 +196,11 @@ wazuh_indexer_enabled: "{{ wazuh_enabled }}"
 
 wazuh_indexer_identifier: "{{ wazuh_identifier }}-indexer"
 
+wazuh_indexer_container_image: "{{ wazuh_indexer_container_image_registry_prefix }}wazuh/wazuh-indexer:{{ wazuh_indexer_container_image_tag }}"
+wazuh_indexer_container_image_tag: "{{ wazuh_version }}"
 wazuh_indexer_container_image_registry_prefix: "{{ wazuh_indexer_container_image_registry_prefix_upstream }}"
 wazuh_indexer_container_image_registry_prefix_upstream: "{{ wazuh_indexer_container_image_registry_prefix_upstream_default }}"
 wazuh_indexer_container_image_registry_prefix_upstream_default: docker.io/
-wazuh_indexer_container_image: "{{ wazuh_indexer_container_image_registry_prefix }}wazuh/wazuh-indexer:{{ wazuh_indexer_container_image_tag }}"
-wazuh_indexer_container_image_tag: "{{ wazuh_version }}"
-wazuh_indexer_container_image_force_pull: "{{ wazuh_indexer_container_image.endswith(':latest') }}"
 
 wazuh_indexer_opensearch_java_opts: "-Xms1g -Xmx1g"
 

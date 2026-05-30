@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 # SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -49,34 +51,32 @@
     group: root
   register: wazuh_indexer_env_result
 
-- name: Ensure Wazuh indexer container image is pulled via community.docker.docker_image
+- name: Ensure Wazuh indexer container image is pulled via community.docker.docker_image_pull
   when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
-  community.docker.docker_image:
+  community.docker.docker_image_pull:
     name: "{{ wazuh_indexer_container_image }}"
-    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
-    force_source: "{{ wazuh_indexer_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
-    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else wazuh_indexer_container_image_force_pull }}"
-  register: result
+    pull: always
+  register: wazuh_indexer_container_image_pull_result_ansible_module
   retries: "{{ devture_playbook_help_container_retries_count }}"
   delay: "{{ devture_playbook_help_container_retries_delay }}"
-  until: result is not failed
+  until: wazuh_indexer_container_image_pull_result_ansible_module is not failed
 
 - name: Ensure Wazuh indexer container image is pulled via ansible.builtin.command
   when: devture_systemd_docker_base_container_image_pull_method == 'command'
   ansible.builtin.command:
     cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ wazuh_indexer_container_image }}"
-  register: result
+  register: wazuh_indexer_container_image_pull_result_command
   retries: "{{ devture_playbook_help_container_retries_count }}"
   delay: "{{ devture_playbook_help_container_retries_delay }}"
-  until: result is not failed
-  changed_when: "'Downloaded newer image' in result.stdout"
+  until: wazuh_indexer_container_image_pull_result_command is not failed
+  changed_when: "'Downloaded newer image' in wazuh_indexer_container_image_pull_result_command.stdout"
 
 - name: Ensure Wazuh indexer systemd service is installed
   ansible.builtin.template:
     src: "{{ role_path }}/templates/systemd/wazuh-indexer.service.j2"
     dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ wazuh_indexer_identifier }}.service"
     mode: "0644"
-  register: wazuh_indexer_systemd_result
+  register: wazuh_indexer_systemd_service_result
 
 - name: Ensure Wazuh indexer systemd service is enabled
   ansible.builtin.systemd:
@@ -84,14 +84,16 @@
     enabled: true
     daemon_reload: true
 
-- name: Set Wazuh indexer restart-necessary fact
+- name: Determine whether Wazuh indexer needs a restart
   ansible.builtin.set_fact:
     wazuh_indexer_restart_necessary: >-
       {{
-        wazuh_indexer_opensearch_yml_result.changed
-        or wazuh_indexer_internal_users_result.changed
-        or wazuh_indexer_env_result.changed
-        or wazuh_indexer_systemd_result.changed
+        wazuh_indexer_opensearch_yml_result.changed | default(false)
+        or wazuh_indexer_internal_users_result.changed | default(false)
+        or wazuh_indexer_env_result.changed | default(false)
+        or wazuh_indexer_systemd_service_result.changed | default(false)
+        or wazuh_indexer_container_image_pull_result_ansible_module.changed | default(false)
+        or wazuh_indexer_container_image_pull_result_command.changed | default(false)
       }}
 
 - name: Notify about Wazuh indexer needing restart
