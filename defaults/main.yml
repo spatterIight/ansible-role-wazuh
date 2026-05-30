@@ -59,12 +59,11 @@ wazuh_manager_enabled: "{{ wazuh_enabled }}"
 
 wazuh_manager_identifier: "{{ wazuh_identifier }}-manager"
 
+wazuh_manager_container_image: "{{ wazuh_manager_container_image_registry_prefix }}wazuh/wazuh-manager:{{ wazuh_manager_container_image_tag }}"
+wazuh_manager_container_image_tag: "{{ wazuh_version }}"
 wazuh_manager_container_image_registry_prefix: "{{ wazuh_manager_container_image_registry_prefix_upstream }}"
 wazuh_manager_container_image_registry_prefix_upstream: "{{ wazuh_manager_container_image_registry_prefix_upstream_default }}"
 wazuh_manager_container_image_registry_prefix_upstream_default: docker.io/
-wazuh_manager_container_image: "{{ wazuh_manager_container_image_registry_prefix }}wazuh/wazuh-manager:{{ wazuh_manager_container_image_tag }}"
-wazuh_manager_container_image_tag: "{{ wazuh_version }}"
-wazuh_manager_container_image_force_pull: "{{ wazuh_manager_container_image.endswith(':latest') }}"
 
 # Specify how the container publishes its agent enrollment port (as defined by `wazuh_manager_agent_port`).
 #
