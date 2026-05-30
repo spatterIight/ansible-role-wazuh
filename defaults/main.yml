@@ -340,12 +340,11 @@ wazuh_dashboard_enabled: "{{ wazuh_enabled }}"
 
 wazuh_dashboard_identifier: "{{ wazuh_identifier }}-dashboard"
 
+wazuh_dashboard_container_image: "{{ wazuh_dashboard_container_image_registry_prefix }}wazuh/wazuh-dashboard:{{ wazuh_dashboard_container_image_tag }}"
+wazuh_dashboard_container_image_tag: "{{ wazuh_version }}"
 wazuh_dashboard_container_image_registry_prefix: "{{ wazuh_dashboard_container_image_registry_prefix_upstream }}"
 wazuh_dashboard_container_image_registry_prefix_upstream: "{{ wazuh_dashboard_container_image_registry_prefix_upstream_default }}"
 wazuh_dashboard_container_image_registry_prefix_upstream_default: docker.io/
-wazuh_dashboard_container_image: "{{ wazuh_dashboard_container_image_registry_prefix }}wazuh/wazuh-dashboard:{{ wazuh_dashboard_container_image_tag }}"
-wazuh_dashboard_container_image_tag: "{{ wazuh_version }}"
-wazuh_dashboard_container_image_force_pull: "{{ wazuh_dashboard_container_image.endswith(':latest') }}"
 
 # Specify how the container publishes its dashboard http port (as defined by `wazuh_dashboard_http_port`).
 #

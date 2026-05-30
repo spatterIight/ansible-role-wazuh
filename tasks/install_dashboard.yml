@@ -1,3 +1,5 @@
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 # SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -53,34 +55,32 @@
     group: root
   register: wazuh_dashboard_labels_result
 
-- name: Ensure Wazuh dashboard container image is pulled via community.docker.docker_image
+- name: Ensure Wazuh dashboard container image is pulled via community.docker.docker_image_pull
   when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
-  community.docker.docker_image:
+  community.docker.docker_image_pull:
     name: "{{ wazuh_dashboard_container_image }}"
-    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
-    force_source: "{{ wazuh_dashboard_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
-    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else wazuh_dashboard_container_image_force_pull }}"
-  register: result
+    pull: always
+  register: wazuh_dashboard_container_image_pull_result_ansible_module
   retries: "{{ devture_playbook_help_container_retries_count }}"
   delay: "{{ devture_playbook_help_container_retries_delay }}"
-  until: result is not failed
+  until: wazuh_dashboard_container_image_pull_result_ansible_module is not failed
 
 - name: Ensure Wazuh dashboard container image is pulled via ansible.builtin.command
   when: devture_systemd_docker_base_container_image_pull_method == 'command'
   ansible.builtin.command:
     cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ wazuh_dashboard_container_image }}"
-  register: result
+  register: wazuh_dashboard_container_image_pull_result_command
   retries: "{{ devture_playbook_help_container_retries_count }}"
   delay: "{{ devture_playbook_help_container_retries_delay }}"
-  until: result is not failed
-  changed_when: "'Downloaded newer image' in result.stdout"
+  until: wazuh_dashboard_container_image_pull_result_command is not failed
+  changed_when: "'Downloaded newer image' in wazuh_dashboard_container_image_pull_result_command.stdout"
 
 - name: Ensure Wazuh dashboard systemd service is installed
   ansible.builtin.template:
     src: "{{ role_path }}/templates/systemd/wazuh-dashboard.service.j2"
     dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ wazuh_dashboard_identifier }}.service"
     mode: "0644"
-  register: wazuh_dashboard_systemd_result
+  register: wazuh_dashboard_systemd_service_result
 
 - name: Ensure Wazuh dashboard systemd service is enabled
   ansible.builtin.systemd:
@@ -88,15 +88,17 @@
     enabled: true
     daemon_reload: true
 
-- name: Set Wazuh dashboard restart-necessary fact
+- name: Determine whether Wazuh dashboard needs a restart
   ansible.builtin.set_fact:
     wazuh_dashboard_restart_necessary: >-
       {{
-        wazuh_dashboard_opensearch_yml_result.changed
-        or wazuh_dashboard_wazuh_yml_result.changed
-        or wazuh_dashboard_env_result.changed
-        or wazuh_dashboard_labels_result.changed
-        or wazuh_dashboard_systemd_result.changed
+        wazuh_dashboard_opensearch_yml_result.changed | default(false)
+        or wazuh_dashboard_wazuh_yml_result.changed | default(false)
+        or wazuh_dashboard_env_result.changed | default(false)
+        or wazuh_dashboard_labels_result.changed | default(false)
+        or wazuh_dashboard_systemd_service_result.changed | default(false)
+        or wazuh_dashboard_container_image_pull_result_ansible_module.changed | default(false)
+        or wazuh_dashboard_container_image_pull_result_command.changed | default(false)
       }}
 
 - name: Notify about Wazuh dashboard needing restart
