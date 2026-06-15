@@ -28,7 +28,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 This is an [Ansible](https://www.ansible.com/) role which installs [Wazuh](https://wazuh.com/) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
-Wazuh is an open source security platform .
+Wazuh is an open-source security platform.
 
 See the project's [documentation](https://documentation.wazuh.com/current/index.html) to learn what Wazuh does and why it might be useful to you.
 
