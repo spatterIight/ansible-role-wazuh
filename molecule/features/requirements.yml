@@ -1,8 +1,4 @@
 ---
-###########
-## Roles ##
-###########
-
 roles:
   - name: ansible-role-docker
     src: https://github.com/geerlingguy/ansible-role-docker
@@ -19,10 +15,8 @@ roles:
     scm: git
     version: v1.5.0-0
 
-#################
-## Collections ##
-#################
-
+# Note: While they can be available by default per Ansible's version,
+# these are intentionally included here to pin the version for reproducibility.
 collections:
   - name: community.docker
     version: 5.2.1
