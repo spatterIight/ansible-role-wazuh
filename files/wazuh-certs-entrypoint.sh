@@ -1,7 +1,7 @@
 #!/bin/bash
 # Wazuh Docker Copyright (C) 2017, Wazuh Inc. (License GPLv2)
 
-# This file is a modified version of https://github.com/wazuh/wazuh-docker/blob/v4.14.6/indexer-certs-creator/config/entrypoint.sh
+# This file is a modified version of https://github.com/wazuh/wazuh-docker/blob/v4.14.7/indexer-certs-creator/config/entrypoint.sh
 
 ##############################################################################
 # Loading Cert Gen Tool from local filesystem

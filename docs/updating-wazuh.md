@@ -171,9 +171,9 @@ it at runtime from `https://packages.wazuh.com/$CERT_TOOL_VERSION/wazuh-certs-to
 tool instead (and forks the entrypoint to load it from a bind mount), so the vendored copy
 does not refresh itself and will silently go stale.
 
-That URL is **branch-level, not per-patch** — `https://packages.wazuh.com/4.14.6/` returns
-403, so there is no version-to-version diff to take. Compare against the branch URL for the
-new release's minor series on every update:
+That URL is **branch-level, not per-patch** — `https://packages.wazuh.com/<major.minor.patch>/`
+returns 403, so there is no version-to-version diff to take. Compare against the branch URL
+for the new release's minor series on every update:
 
 ```sh
 diff <(curl -fsSL https://packages.wazuh.com/<major.minor>/wazuh-certs-tool.sh) \
@@ -191,6 +191,11 @@ Upstream ships a few lines with trailing whitespace; the `trailing-whitespace` p
 hook strips them, so the vendored copy is never byte-identical to the download. Account for
 that when diffing. Note also that `.pre-commit-config.yaml` excludes both scripts from
 codespell, since they are upstream code.
+
+**Reading the diff:** if the only hunks are trailing whitespace on the
+`# ------------ certFunctions.sh ------------` style section separators, the vendored copy is
+already current and needs no refresh. The branch URL only changes when upstream reworks the
+tool, which is far less often than each patch release — most releases require no action here.
 
 Before accepting a refresh, sanity-check two things that the role depends on:
 
@@ -225,6 +230,8 @@ Preserve these intentional divergences:
   `packages.wazuh.com` — the whole download block is replaced by a local-filesystem check.
 - The provenance comment near the top pins the upstream tag it was forked from. Bump it to
   the new tag as part of this step.
+- Upstream ends the file with a trailing blank line, which the `end-of-file-fixer` pre-commit
+  hook strips. That last diff hunk is expected and should be left alone.
 
 ## Step 6 — Verify
 
