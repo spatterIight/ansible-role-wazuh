@@ -18,267 +18,103 @@ cert_tmp_path="/tmp/wazuh-certificates"
 debug=">> ${logfile} 2>&1"
 readonly cert_tool_script_name=".*certs.*\.sh"
 
-# ------------ certMain.sh ------------
-function getHelp() {
+# ------------ certFunctions.sh ------------
+function cert_validatePath() {
+    local path="$1"
+    local path_type="${2:-file}"
 
-    echo -e ""
-    echo -e "NAME"
-    echo -e "        wazuh-cert-tool.sh - Manages the creation of certificates of the Wazuh components."
-    echo -e ""
-    echo -e "SYNOPSIS"
-    echo -e "        wazuh-cert-tool.sh [OPTIONS]"
-    echo -e ""
-    echo -e "DESCRIPTION"
-    echo -e "        -a,  --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the admin certificates, add root-ca.pem and root-ca.key."
-    echo -e ""
-    echo -e "        -A, --all </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created."
-    echo -e ""
-    echo -e "        -ca, --root-ca-certificates"
-    echo -e "                Creates the root-ca certificates."
-    echo -e ""
-    echo -e "        -v,  --verbose"
-    echo -e "                Enables verbose mode."
-    echo -e ""
-    echo -e "        -wd,  --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key."
-    echo -e ""
-    echo -e "        -wi,  --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key."
-    echo -e ""
-    echo -e "        -ws,  --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
-    echo -e "                Creates the Wazuh server certificates, add root-ca.pem and root-ca.key."
-    echo -e ""
-    echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
-    echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
-    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws"
-    echo -e ""
-
-    exit 1
-
-}
-function main() {
-
-    umask 177
-
-    cert_checkOpenSSL
-
-    if [ -n "${1}" ]; then
-        while [ -n "${1}" ]
-        do
-            case "${1}" in
-            "-a"|"--admin-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -a|--admin-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cadmin=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
-                ;;
-            "-A"|"--all")
-                if  [[ -n "${2}" && "${2}" != "-v" && "${2}" != "-tmp" ]]; then
-                    # Validate that the user has entered the 2 files
-                    if [[ -z ${3} ]]; then
-                        if [[ ${2} == *".key" ]]; then
-                            common_logger -e "You have not entered a root-ca.pem"
-                            exit 1
-                        else
-                            common_logger -e "You have not entered a root-ca.key"
-                            exit 1
-                        fi
-                    fi
-                    all=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                else
-                    all=1
-                    shift 1
-                fi
-                ;;
-            "-ca"|"--root-ca-certificate")
-                ca=1
-                shift 1
-                ;;
-            "-h"|"--help")
-                getHelp
-                ;;
-            "-v"|"--verbose")
-                debugEnabled=1
-                shift 1
-                ;;
-            "-wd"|"--wazuh-dashboard-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wd|--wazuh-dashboard-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cdashboard=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
-                ;;
-            "-wi"|"--wazuh-indexer-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wi|--wazuh-indexer-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cindexer=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
-                ;;
-            "-ws"|"--wazuh-server-certificates")
-                if [[ -z "${2}" || -z "${3}" ]]; then
-                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -ws|--wazuh-server-certificates"
-                    getHelp
-                    exit 1
-                else
-                    cserver=1
-                    rootca="${2}"
-                    rootcakey="${3}"
-                    shift 3
-                fi
-                ;;
-            "-tmp"|"--cert_tmp_path")
-                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cserver}" == 1 ) ]]; then
-                    if [[ -z "${2}" || ! "${2}" == /* ]]; then
-                        common_logger -e "Error on arguments. Probably missing </path/to/tmp_dir> or path does not start with '/'."
-                        getHelp
-                        exit 1
-                    else
-                        cert_tmp_path="${2}"
-                        shift 2
-                    fi
-                else
-                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws"
-                    getHelp
-                    exit 1
-                fi
-                ;;
-            *)
-                echo "Unknow option: ${1}"
-                getHelp
-            esac
-        done
-
-        common_logger "Verbose logging redirected to ${logfile}"
-
-        if [[ -d "${base_path}"/wazuh-certificates ]]; then
-            if [ -n "$(ls -A "${base_path}"/wazuh-certificates)" ]; then
-                common_logger -e "Directory wazuh-certificates already exists in the same path as the script. Please, remove the certs directory to create new certificates."
-                exit 1
-            fi
-        fi
-
-        if [[ ! -d "${cert_tmp_path}" ]]; then
-            mkdir -p "${cert_tmp_path}"
-            chmod 744 "${cert_tmp_path}"
-        fi
-
-        cert_readConfig
-
-        if [ -n "${debugEnabled}" ]; then
-            debug="2>&1 | tee -a ${logfile}"
-        fi
-
-        if [[ -n "${cadmin}" ]]; then
-            cert_checkRootCA
-            cert_generateAdmincertificate
-            common_logger "Admin certificates created."
-            cert_cleanFiles
-            cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
-        fi
-
-        if [[ -n "${all}" ]]; then
-            cert_checkRootCA
-            cert_generateAdmincertificate
-            common_logger "Admin certificates created."
-            if cert_generateIndexercertificates; then
-                common_logger "Wazuh indexer certificates created."
-            fi
-            if cert_generateFilebeatcertificates; then
-                common_logger "Wazuh Filebeat certificates created."
-            fi
-            if cert_generateDashboardcertificates; then
-                common_logger "Wazuh dashboard certificates created."
-            fi
-            cert_cleanFiles
-            cert_setpermisions
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
-        fi
-
-        if [[ -n "${ca}" ]]; then
-            cert_generateRootCAcertificate
-            common_logger "Authority certificates created."
-            cert_cleanFiles
-            eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
-        fi
-
-        if [[ -n "${cindexer}" ]]; then
-            if [ ${#indexer_node_names[@]} -gt 0 ]; then
-                cert_checkRootCA
-                cert_generateIndexercertificates
-                common_logger "Wazuh indexer certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
-            else
-                common_logger -e "Indexer node not present in config.yml."
-                exit 1
-            fi
-        fi
-
-        if [[ -n "${cserver}" ]]; then
-            if [ ${#server_node_names[@]} -gt 0 ]; then
-                cert_checkRootCA
-                cert_generateFilebeatcertificates
-                common_logger "Wazuh Filebeat certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
-            else
-                common_logger -e "Server node not present in config.yml."
-                exit 1
-            fi
-        fi
-
-        if [[ -n "${cdashboard}" ]]; then
-            if [ ${#dashboard_node_names[@]} -gt 0 ]; then
-                cert_checkRootCA
-                cert_generateDashboardcertificates
-                common_logger "Wazuh dashboard certificates created."
-                cert_cleanFiles
-                cert_setpermisions
-                eval "mv ${cert_tmp_path} ${base_path}/wazuh-certificates ${debug}"
-            else
-                common_logger -e "Dashboard node not present in config.yml."
-                exit 1
-            fi
-        fi
-
-    else
-        getHelp
+    # Check if path is empty
+    if [[ -z "${path}" ]]; then
+        common_logger -e "Path cannot be empty."
+        return 1
     fi
 
+    # Prevent path traversal attacks - reject paths with suspicious patterns
+    if [[ "${path}" =~ \.\./|\.\.\\ ]]; then
+        common_logger -e "Path traversal detected in: ${path}"
+        return 1
+    fi
+
+    # Reject paths with newlines, carriage returns, or tabs (specific problematic characters)
+    if [[ "${path}" =~ $'\n'|$'\r'|$'\t' ]]; then
+        common_logger -e "Invalid characters detected in path: ${path}"
+        return 1
+    fi
+
+    # For absolute paths validation
+    if [[ "${path}" == /* ]]; then
+        # Resolve to canonical path to prevent symlink attacks
+        if command -v realpath >/dev/null 2>&1; then
+            local canonical_path
+            canonical_path=$(realpath -m "${path}" 2>/dev/null) || return 1
+
+            # Ensure the canonical path doesn't escape expected boundaries
+            if [[ ! "${canonical_path}" =~ ^/[a-zA-Z0-9/_.\-]+$ ]]; then
+                common_logger -e "Invalid canonical path: ${canonical_path}"
+                return 1
+            fi
+        fi
+    fi
+
+    return 0
 }
-# ------------ certFunctions.sh ------------
+function cert_sanitizeFilename() {
+    local filename="$1"
+
+    # Remove any path components
+    filename="${filename##*/}"
+
+    # Only allow alphanumeric, dash, underscore, and dot
+    filename=$(echo "${filename}" | sed 's/[^a-zA-Z0-9._-]/_/g')
+
+    # Prevent hidden files
+    filename="${filename#.}"
+
+    # Limit length to 255 characters
+    if [[ ${#filename} -gt 255 ]]; then
+        filename="${filename:0:255}"
+    fi
+
+    echo "${filename}"
+}
+function cert_sanitizeNodeName() {
+    local nodename="$1"
+
+    # Only allow alphanumeric, dash, underscore, and dot (typical for hostnames)
+    if [[ ! "${nodename}" =~ ^[a-zA-Z0-9._-]+$ ]]; then
+        common_logger -e "Invalid node name: ${nodename}. Only alphanumeric characters, dots, dashes, and underscores are allowed."
+        return 1
+    fi
+
+    # Prevent names starting with dash or dot
+    if [[ "${nodename}" =~ ^[-\.] ]]; then
+        common_logger -e "Node name cannot start with dash or dot: ${nodename}"
+        return 1
+    fi
+
+    # Limit length
+    if [[ ${#nodename} -gt 253 ]]; then
+        common_logger -e "Node name too long: ${nodename}"
+        return 1
+    fi
+
+    return 0
+}
 function cert_cleanFiles() {
 
     common_logger -d "Cleaning certificate files."
-    eval "rm -f ${cert_tmp_path}/*.csr ${debug}"
-    eval "rm -f ${cert_tmp_path}/*.srl ${debug}"
-    eval "rm -f ${cert_tmp_path}/*.conf ${debug}"
-    eval "rm -f ${cert_tmp_path}/admin-key-temp.pem ${debug}"
+
+    # Validate cert_tmp_path before use
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    # Remove files
+    rm -f "${cert_tmp_path}"/*.csr
+    rm -f "${cert_tmp_path}"/*.srl
+    rm -f "${cert_tmp_path}"/*.conf
+    rm -f "${cert_tmp_path}"/admin-key-temp.pem
 
 }
 function cert_checkOpenSSL() {
@@ -302,16 +138,36 @@ function cert_checkRootCA() {
             rootca=${rootcakey}
             rootcakey=${ca_temp}
         fi
+
+        # Validate paths
+        if ! cert_validatePath "${rootca}" "file"; then
+            common_logger -e "Invalid root CA certificate path: ${rootca}"
+            cert_cleanFiles
+            exit 1
+        fi
+
+        if ! cert_validatePath "${rootcakey}" "file"; then
+            common_logger -e "Invalid root CA key path: ${rootcakey}"
+            cert_cleanFiles
+            exit 1
+        fi
+
+        if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+            common_logger -e "Invalid certificate temporary path."
+            cert_cleanFiles
+            exit 1
+        fi
+
         # Validate that files exist
         if [[ -e ${rootca} ]]; then
-            eval "cp ${rootca} ${cert_tmp_path}/root-ca.pem ${debug}"
+            cp "${rootca}" "${cert_tmp_path}/root-ca.pem"
         else
             common_logger -e "The file ${rootca} does not exists"
             cert_cleanFiles
             exit 1
         fi
         if [[ -e ${rootcakey} ]]; then
-            eval "cp ${rootcakey} ${cert_tmp_path}/root-ca.key ${debug}"
+            cp "${rootcakey}" "${cert_tmp_path}/root-ca.key"
         else
             common_logger -e "The file ${rootcakey} does not exists"
             cert_cleanFiles
@@ -324,7 +180,7 @@ function cert_checkRootCA() {
 }
 function cert_executeAndValidate() {
 
-    command_output=$(eval "$@" 2>&1)
+    command_output=$("$@" 2>&1)
     e_code="${PIPESTATUS[0]}"
 
     if [ "${e_code}" -ne 0 ]; then
@@ -339,20 +195,42 @@ function cert_executeAndValidate() {
 function cert_generateAdmincertificate() {
 
     common_logger "Generating Admin certificates."
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
     common_logger -d "Generating Admin private key."
-    cert_executeAndValidate "openssl genrsa -out ${cert_tmp_path}/admin-key-temp.pem 2048"
+    cert_executeAndValidate openssl genrsa -out "${cert_tmp_path}/admin-key-temp.pem" 2048
     common_logger -d "Converting Admin private key to PKCS8 format."
-    cert_executeAndValidate "openssl pkcs8 -inform PEM -outform PEM -in ${cert_tmp_path}/admin-key-temp.pem -topk8 -nocrypt -v1 PBE-SHA1-3DES -out ${cert_tmp_path}/admin-key.pem"
+    cert_executeAndValidate openssl pkcs8 -inform PEM -outform PEM -in "${cert_tmp_path}/admin-key-temp.pem" -topk8 -nocrypt -v1 PBE-SHA1-3DES -out "${cert_tmp_path}/admin-key.pem"
     common_logger -d "Generating Admin CSR."
-    cert_executeAndValidate "openssl req -new -key ${cert_tmp_path}/admin-key.pem -out ${cert_tmp_path}/admin.csr -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'"
+    cert_executeAndValidate openssl req -new -key "${cert_tmp_path}/admin-key.pem" -out "${cert_tmp_path}/admin.csr" -batch -subj '/C=US/L=California/O=Wazuh/OU=Wazuh/CN=admin'
     common_logger -d "Creating Admin certificate."
-    cert_executeAndValidate "openssl x509 -days 3650 -req -in ${cert_tmp_path}/admin.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -sha256 -out ${cert_tmp_path}/admin.pem"
+    cert_executeAndValidate openssl x509 -days 3650 -req -in "${cert_tmp_path}/admin.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -sha256 -out "${cert_tmp_path}/admin.pem"
 
 }
 function cert_generateCertificateconfiguration() {
 
     common_logger -d "Generating certificate configuration."
-    cat > "${cert_tmp_path}/${1}.conf" <<- EOF
+
+    local node_name="$1"
+
+    # Validate node name
+    if ! cert_sanitizeNodeName "${node_name}"; then
+        common_logger -e "Invalid node name: ${node_name}"
+        exit 1
+    fi
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    cat > "${cert_tmp_path}/${node_name}.conf" <<- EOF
         [ req ]
         prompt = no
         default_bits = 2048
@@ -378,18 +256,18 @@ function cert_generateCertificateconfiguration() {
 	EOF
 
 
-    conf="$(awk '{sub("CN = cname", "CN = '"${1}"'")}1' "${cert_tmp_path}/${1}.conf")"
-    echo "${conf}" > "${cert_tmp_path}/${1}.conf"
+    conf="$(awk '{sub("CN = cname", "CN = '"${node_name}"'")}1' "${cert_tmp_path}/${node_name}.conf")"
+    echo "${conf}" > "${cert_tmp_path}/${node_name}.conf"
 
     if [ "${#@}" -gt 1 ]; then
-        sed -i '/IP.1/d' "${cert_tmp_path}/${1}.conf"
+        sed -i '/IP.1/d' "${cert_tmp_path}/${node_name}.conf"
         for (( i=2; i<=${#@}; i++ )); do
             isIP=$(echo "${!i}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
             isDNS=$(echo "${!i}" | grep -P "^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])\.([A-Za-z]{2,})$" )            j=$((i-1))
             if [ "${isIP}" ]; then
-                printf '%s\n' "        IP.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                printf '%s\n' "        IP.${j} = ${!i}" >> "${cert_tmp_path}/${node_name}.conf"
             elif [ "${isDNS}" ]; then
-                printf '%s\n' "        DNS.${j} = ${!i}" >> "${cert_tmp_path}/${1}.conf"
+                printf '%s\n' "        DNS.${j} = ${!i}" >> "${cert_tmp_path}/${node_name}.conf"
             else
                 common_logger -e "Invalid IP or DNS ${!i}"
                 exit 1
@@ -408,12 +286,19 @@ function cert_generateIndexercertificates() {
 
         for i in "${!indexer_node_names[@]}"; do
             indexer_node_name=${indexer_node_names[$i]}
+
+            # Validate node name
+            if ! cert_sanitizeNodeName "${indexer_node_name}"; then
+                common_logger -e "Invalid indexer node name: ${indexer_node_name}"
+                exit 1
+            fi
+
             common_logger -d "Creating the certificates for ${indexer_node_name} indexer node."
             cert_generateCertificateconfiguration "${indexer_node_name}" "${indexer_node_ips[i]}"
             common_logger -d "Creating the Wazuh indexer tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${indexer_node_name}-key.pem -out ${cert_tmp_path}/${indexer_node_name}.csr -config ${cert_tmp_path}/${indexer_node_name}.conf"
+            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${indexer_node_name}-key.pem" -out "${cert_tmp_path}/${indexer_node_name}.csr" -config "${cert_tmp_path}/${indexer_node_name}.conf"
             common_logger -d "Creating the Wazuh indexer certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${indexer_node_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${indexer_node_name}.pem -extfile ${cert_tmp_path}/${indexer_node_name}.conf -extensions v3_req -days 3650"
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${indexer_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${indexer_node_name}.pem" -extfile "${cert_tmp_path}/${indexer_node_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -427,14 +312,21 @@ function cert_generateFilebeatcertificates() {
 
         for i in "${!server_node_names[@]}"; do
             server_name="${server_node_names[i]}"
+
+            # Validate node name
+            if ! cert_sanitizeNodeName "${server_name}"; then
+                common_logger -e "Invalid server node name: ${server_name}"
+                exit 1
+            fi
+
             common_logger -d "Generating the certificates for ${server_name} server node."
             j=$((i+1))
             declare -a server_ips=(server_node_ip_"$j"[@])
             cert_generateCertificateconfiguration "${server_name}" "${!server_ips}"
             common_logger -d "Creating the Wazuh server tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${server_name}-key.pem -out ${cert_tmp_path}/${server_name}.csr  -config ${cert_tmp_path}/${server_name}.conf"
+            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${server_name}-key.pem" -out "${cert_tmp_path}/${server_name}.csr" -config "${cert_tmp_path}/${server_name}.conf"
             common_logger -d "Creating the Wazuh server certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${server_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${server_name}.pem -extfile ${cert_tmp_path}/${server_name}.conf -extensions v3_req -days 3650"
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${server_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${server_name}.pem" -extfile "${cert_tmp_path}/${server_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -447,11 +339,18 @@ function cert_generateDashboardcertificates() {
 
         for i in "${!dashboard_node_names[@]}"; do
             dashboard_node_name="${dashboard_node_names[i]}"
+
+            # Validate node name
+            if ! cert_sanitizeNodeName "${dashboard_node_name}"; then
+                common_logger -e "Invalid dashboard node name: ${dashboard_node_name}"
+                exit 1
+            fi
+
             cert_generateCertificateconfiguration "${dashboard_node_name}" "${dashboard_node_ips[i]}"
             common_logger -d "Creating the Wazuh dashboard tmp key pair."
-            cert_executeAndValidate "openssl req -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/${dashboard_node_name}-key.pem -out ${cert_tmp_path}/${dashboard_node_name}.csr -config ${cert_tmp_path}/${dashboard_node_name}.conf"
+            cert_executeAndValidate openssl req -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/${dashboard_node_name}-key.pem" -out "${cert_tmp_path}/${dashboard_node_name}.csr" -config "${cert_tmp_path}/${dashboard_node_name}.conf"
             common_logger -d "Creating the Wazuh dashboard certificates."
-            cert_executeAndValidate "openssl x509 -req -in ${cert_tmp_path}/${dashboard_node_name}.csr -CA ${cert_tmp_path}/root-ca.pem -CAkey ${cert_tmp_path}/root-ca.key -CAcreateserial -out ${cert_tmp_path}/${dashboard_node_name}.pem -extfile ${cert_tmp_path}/${dashboard_node_name}.conf -extensions v3_req -days 3650"
+            cert_executeAndValidate openssl x509 -req -in "${cert_tmp_path}/${dashboard_node_name}.csr" -CA "${cert_tmp_path}/root-ca.pem" -CAkey "${cert_tmp_path}/root-ca.key" -CAcreateserial -out "${cert_tmp_path}/${dashboard_node_name}.pem" -extfile "${cert_tmp_path}/${dashboard_node_name}.conf" -extensions v3_req -days 3650
         done
     else
         return 1
@@ -461,7 +360,14 @@ function cert_generateDashboardcertificates() {
 function cert_generateRootCAcertificate() {
 
     common_logger "Generating the root certificate."
-    cert_executeAndValidate "openssl req -x509 -new -nodes -newkey rsa:2048 -keyout ${cert_tmp_path}/root-ca.key -out ${cert_tmp_path}/root-ca.pem -batch -subj '/OU=Wazuh/O=Wazuh/L=California/' -days 3650"
+
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        exit 1
+    fi
+
+    cert_executeAndValidate openssl req -x509 -new -nodes -newkey rsa:2048 -keyout "${cert_tmp_path}/root-ca.key" -out "${cert_tmp_path}/root-ca.pem" -batch -subj '/OU=Wazuh/O=Wazuh/L=California/' -days 3650
 
 }
 function cert_parseYaml() {
@@ -605,17 +511,32 @@ function cert_readConfig() {
             common_logger -e "File ${config_file} is empty"
             exit 1
         fi
-        eval "$(cert_convertCRLFtoLF "${config_file}")"
 
-        eval "indexer_node_names=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 ) )"
-        eval "server_node_names=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+=" | cut -d = -f 2 ) )"
-        eval "dashboard_node_names=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+=" | cut -d = -f 2) )"
-        eval "indexer_node_ips=( $(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
-        eval "server_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2) )"
-        eval "dashboard_node_ips=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 ) )"
-        eval "server_node_types=( $(cert_parseYaml "${config_file}"  | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 ) )"
-        eval "number_server_ips=( $(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l) )"
+        # Convert CRLF to LF
+        if ! cert_convertCRLFtoLF "${config_file}"; then
+            common_logger -e "Failed to convert configuration file from CRLF to LF: ${config_file}"
+            exit 1
+        fi
+
+        # Read node names and IPs - use mapfile/readarray for safer array assignment
+        mapfile -t indexer_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t server_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+server[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t dashboard_node_names < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t indexer_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+indexer[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t server_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+server[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t dashboard_node_ips < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+dashboard[_]+[0-9]+[_]+ip=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+        mapfile -t server_node_types < <(cert_parseYaml "${config_file}" | grep -E "nodes[_]+server[_]+[0-9]+[_]+node_type=" | cut -d = -f 2 | tr -d '"' | tr -d "'")
+
+        number_server_ips=$(cert_parseYaml "${config_file}" | grep -o -E 'nodes[_]+server[_]+[0-9]+[_]+ip' | sort -u | wc -l)
         all_ips=("${indexer_node_ips[@]}" "${server_node_ips[@]}" "${dashboard_node_ips[@]}")
+
+        # Validate all node names
+        for name in "${indexer_node_names[@]}" "${server_node_names[@]}" "${dashboard_node_names[@]}"; do
+            if ! cert_sanitizeNodeName "${name}"; then
+                common_logger -e "Invalid node name found in config: ${name}"
+                exit 1
+            fi
+        done
 
         for ip in "${all_ips[@]}"; do
             isIP=$(echo "${ip}" | grep -P "^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$")
@@ -629,7 +550,7 @@ function cert_readConfig() {
 
         for i in $(seq 1 "${number_server_ips}"); do
             nodes_server="nodes[_]+server[_]+${i}[_]+ip"
-            eval "server_node_ip_$i=( $( cert_parseYaml "${config_file}" | grep -E "${nodes_server}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g') )"
+            mapfile -t "server_node_ip_$i" < <(cert_parseYaml "${config_file}" | grep -E "${nodes_server}" | sed '/\./!d' | cut -d = -f 2 | sed -r 's/\s+//g' | tr -d '"' | tr -d "'")
         done
 
         unique_names=($(echo "${indexer_node_names[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
@@ -706,17 +627,314 @@ function cert_readConfig() {
 
 }
 function cert_setpermisions() {
-    eval "chmod -R 744 ${cert_tmp_path} ${debug}"
+    # Validate cert_tmp_path
+    if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+        common_logger -e "Invalid certificate temporary path."
+        return 1
+    fi
+
+    # Restrict the certificate directory and subdirectories to the owner only
+    chmod 700 "${cert_tmp_path}" || return 1
+    find "${cert_tmp_path}" -type d -exec chmod 700 {} \; || return 1
+    # Restrict private key material to the owner only
+    find "${cert_tmp_path}" -type f \( -name '*.key' -o -name '*.pem' \) -exec chmod 600 {} \; || return 1
+    # Public certificate material can be readable by others
+    find "${cert_tmp_path}" -type f \( -name '*.crt' -o -name '*.cer' -o -name '*.csr' \) -exec chmod 644 {} \; || return 1
 }
 function cert_convertCRLFtoLF() {
-    if [[ ! -d "/tmp/wazuh-install-files" ]]; then
-        eval "mkdir /tmp/wazuh-install-files ${debug}"
+    local config_file_path="$1"
+
+    # Validate config file path
+    if ! cert_validatePath "${config_file_path}" "file"; then
+        common_logger -e "Invalid config file path."
+        return 1
     fi
-    eval "chmod -R 755 /tmp/wazuh-install-files ${debug}"
-    eval "tr -d '\015' < $1 > /tmp/wazuh-install-files/new_config.yml"
-    eval "mv /tmp/wazuh-install-files/new_config.yml $1 ${debug}"
+
+    # Create secure temporary directory with mktemp
+    local temp_dir
+    temp_dir=$(mktemp -d -t wazuh-install-files.XXXXXXXXXX) || {
+        common_logger -e "Failed to create temporary directory"
+        return 1
+    }
+
+    # Set restrictive permissions
+    chmod 700 "${temp_dir}"
+
+    # Convert CRLF to LF
+    tr -d '\015' < "${config_file_path}" > "${temp_dir}/new_config.yml"
+
+    # Move back to original location
+    mv "${temp_dir}/new_config.yml" "${config_file_path}"
+
+    # Clean up temporary directory
+    rm -rf "${temp_dir}"
 }
 
+# ------------ certMain.sh ------------
+function getHelp() {
+
+    echo -e ""
+    echo -e "NAME"
+    echo -e "        wazuh-cert-tool.sh - Manages the creation of certificates of the Wazuh components."
+    echo -e ""
+    echo -e "SYNOPSIS"
+    echo -e "        wazuh-cert-tool.sh [OPTIONS]"
+    echo -e ""
+    echo -e "DESCRIPTION"
+    echo -e "        -a,  --admin-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates the admin certificates, add root-ca.pem and root-ca.key."
+    echo -e ""
+    echo -e "        -A, --all </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates certificates specified in config.yml and admin certificates. Add a root-ca.pem and root-ca.key or leave it empty so a new one will be created."
+    echo -e ""
+    echo -e "        -ca, --root-ca-certificates"
+    echo -e "                Creates the root-ca certificates."
+    echo -e ""
+    echo -e "        -v,  --verbose"
+    echo -e "                Enables verbose mode."
+    echo -e ""
+    echo -e "        -wd,  --wazuh-dashboard-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates the Wazuh dashboard certificates, add root-ca.pem and root-ca.key."
+    echo -e ""
+    echo -e "        -wi,  --wazuh-indexer-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates the Wazuh indexer certificates, add root-ca.pem and root-ca.key."
+    echo -e ""
+    echo -e "        -ws,  --wazuh-server-certificates </path/to/root-ca.pem> </path/to/root-ca.key>"
+    echo -e "                Creates the Wazuh server certificates, add root-ca.pem and root-ca.key."
+    echo -e ""
+    echo -e "        -tmp,  --cert_tmp_path </path/to/tmp_dir>"
+    echo -e "                Modifies the default tmp directory (/tmp/wazuh-ceritificates) to the specified one."
+    echo -e "                Must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws"
+    echo -e ""
+
+    exit 1
+
+}
+function main() {
+
+    # Set a restrictive umask so new regular files default to 600 and directories to 700,
+    # limiting access to the current user.
+    umask 0077
+
+    cert_checkOpenSSL
+
+    if [ -n "${1}" ]; then
+        while [ -n "${1}" ]
+        do
+            case "${1}" in
+            "-a"|"--admin-certificates")
+                if [[ -z "${2}" || -z "${3}" ]]; then
+                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -a|--admin-certificates"
+                    getHelp
+                    exit 1
+                else
+                    cadmin=1
+                    rootca="${2}"
+                    rootcakey="${3}"
+                    shift 3
+                fi
+                ;;
+            "-A"|"--all")
+                if  [[ -n "${2}" && "${2}" != "-v" && "${2}" != "-tmp" ]]; then
+                    # Validate that the user has entered the 2 files
+                    if [[ -z ${3} ]]; then
+                        if [[ ${2} == *".key" ]]; then
+                            common_logger -e "You have not entered a root-ca.pem"
+                            exit 1
+                        else
+                            common_logger -e "You have not entered a root-ca.key"
+                            exit 1
+                        fi
+                    fi
+                    all=1
+                    rootca="${2}"
+                    rootcakey="${3}"
+                    shift 3
+                else
+                    all=1
+                    shift 1
+                fi
+                ;;
+            "-ca"|"--root-ca-certificate")
+                ca=1
+                shift 1
+                ;;
+            "-h"|"--help")
+                getHelp
+                ;;
+            "-v"|"--verbose")
+                debugEnabled=1
+                shift 1
+                ;;
+            "-wd"|"--wazuh-dashboard-certificates")
+                if [[ -z "${2}" || -z "${3}" ]]; then
+                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wd|--wazuh-dashboard-certificates"
+                    getHelp
+                    exit 1
+                else
+                    cdashboard=1
+                    rootca="${2}"
+                    rootcakey="${3}"
+                    shift 3
+                fi
+                ;;
+            "-wi"|"--wazuh-indexer-certificates")
+                if [[ -z "${2}" || -z "${3}" ]]; then
+                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -wi|--wazuh-indexer-certificates"
+                    getHelp
+                    exit 1
+                else
+                    cindexer=1
+                    rootca="${2}"
+                    rootcakey="${3}"
+                    shift 3
+                fi
+                ;;
+            "-ws"|"--wazuh-server-certificates")
+                if [[ -z "${2}" || -z "${3}" ]]; then
+                    common_logger -e "Error on arguments. Probably missing </path/to/root-ca.pem> </path/to/root-ca.key> after -ws|--wazuh-server-certificates"
+                    getHelp
+                    exit 1
+                else
+                    cserver=1
+                    rootca="${2}"
+                    rootcakey="${3}"
+                    shift 3
+                fi
+                ;;
+            "-tmp"|"--cert_tmp_path")
+                if [[ -n "${3}" || ( "${cadmin}" == 1 || "${all}" == 1 || "${ca}" == 1 || "${cdashboard}" == 1 || "${cindexer}" == 1 || "${cserver}" == 1 ) ]]; then
+                    if [[ -z "${2}" || ! "${2}" == /* ]]; then
+                        common_logger -e "Error on arguments. Probably missing </path/to/tmp_dir> or path does not start with '/'."
+                        getHelp
+                        exit 1
+                    else
+                        cert_tmp_path="${2}"
+                        shift 2
+                    fi
+                else
+                    common_logger -e "Error: -tmp must be used along with one of these options: -a, -A, -ca, -wi, -wd, -ws"
+                    getHelp
+                    exit 1
+                fi
+                ;;
+            *)
+                echo "Unknow option: ${1}"
+                getHelp
+            esac
+        done
+
+        common_logger "Verbose logging redirected to ${logfile}"
+
+        if [[ -d "${base_path}"/wazuh-certificates ]]; then
+            if [ -n "$(ls -A "${base_path}"/wazuh-certificates)" ]; then
+                common_logger -e "Directory wazuh-certificates already exists in the same path as the script. Please, remove the certs directory to create new certificates."
+                exit 1
+            fi
+        fi
+
+        # Validate and create secure temporary directory
+        if ! cert_validatePath "${cert_tmp_path}" "directory"; then
+            common_logger -e "Invalid temporary path: ${cert_tmp_path}"
+            exit 1
+        fi
+
+        if [[ ! -d "${cert_tmp_path}" ]]; then
+            # Create directory with secure permissions
+            mkdir -p "${cert_tmp_path}"
+            chmod 700 "${cert_tmp_path}"
+        else
+            # Ensure existing directory has secure permissions
+            chmod 700 "${cert_tmp_path}"
+        fi
+
+        cert_readConfig
+
+        if [ -n "${debugEnabled}" ]; then
+            debug="2>&1 | tee -a ${logfile}"
+        fi
+
+        if [[ -n "${cadmin}" ]]; then
+            cert_checkRootCA
+            cert_generateAdmincertificate
+            common_logger "Admin certificates created."
+            cert_cleanFiles
+            cert_setpermisions
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+        fi
+
+        if [[ -n "${all}" ]]; then
+            cert_checkRootCA
+            cert_generateAdmincertificate
+            common_logger "Admin certificates created."
+            if cert_generateIndexercertificates; then
+                common_logger "Wazuh indexer certificates created."
+            fi
+            if cert_generateFilebeatcertificates; then
+                common_logger "Wazuh Filebeat certificates created."
+            fi
+            if cert_generateDashboardcertificates; then
+                common_logger "Wazuh dashboard certificates created."
+            fi
+            cert_cleanFiles
+            cert_setpermisions
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+        fi
+
+        if [[ -n "${ca}" ]]; then
+            cert_generateRootCAcertificate
+            common_logger "Authority certificates created."
+            cert_cleanFiles
+            mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+        fi
+
+        if [[ -n "${cindexer}" ]]; then
+            if [ ${#indexer_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateIndexercertificates
+                common_logger "Wazuh indexer certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                common_logger -e "Indexer node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+        if [[ -n "${cserver}" ]]; then
+            if [ ${#server_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateFilebeatcertificates
+                common_logger "Wazuh Filebeat certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                common_logger -e "Server node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+        if [[ -n "${cdashboard}" ]]; then
+            if [ ${#dashboard_node_names[@]} -gt 0 ]; then
+                cert_checkRootCA
+                cert_generateDashboardcertificates
+                common_logger "Wazuh dashboard certificates created."
+                cert_cleanFiles
+                cert_setpermisions
+                mv "${cert_tmp_path}" "${base_path}/wazuh-certificates"
+            else
+                common_logger -e "Dashboard node not present in config.yml."
+                exit 1
+            fi
+        fi
+
+    else
+        getHelp
+    fi
+
+}
 # ------------ certVariables.sh ------------
 
 function common_checkAptLock() {
@@ -783,11 +1001,6 @@ function common_checkRoot() {
         exit 1;
     fi
 
-    common_logger -d "Checking sudo package."
-    if ! command -v sudo > /dev/null; then
-        common_logger -e "The sudo package is not installed and it is necessary for the installation."
-        exit 1;
-    fi
 }
 function common_checkInstalled() {
 
@@ -798,7 +1011,7 @@ function common_checkInstalled() {
     dashboard_installed=""
 
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q wazuh-manager --quiet && wazuh_installed=1"
+        rpm -q wazuh-manager --quiet && wazuh_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
         wazuh_installed=$(apt list --installed  2>/dev/null | grep wazuh-manager)
     fi
@@ -809,7 +1022,7 @@ function common_checkInstalled() {
     fi
 
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q wazuh-indexer --quiet && indexer_installed=1"
+        rpm -q wazuh-indexer --quiet && indexer_installed=1
 
     elif [ "${sys_type}" == "apt-get" ]; then
         indexer_installed=$(apt list --installed 2>/dev/null | grep wazuh-indexer)
@@ -821,7 +1034,7 @@ function common_checkInstalled() {
     fi
 
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q filebeat --quiet && filebeat_installed=1"
+        rpm -q filebeat --quiet && filebeat_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
         filebeat_installed=$(apt list --installed  2>/dev/null | grep filebeat)
     fi
@@ -832,7 +1045,7 @@ function common_checkInstalled() {
     fi
 
     if [ "${sys_type}" == "yum" ]; then
-        eval "rpm -q wazuh-dashboard --quiet && dashboard_installed=1"
+        rpm -q wazuh-dashboard --quiet && dashboard_installed=1
     elif [ "${sys_type}" == "apt-get" ]; then
         dashboard_installed=$(apt list --installed  2>/dev/null | grep wazuh-dashboard)
     fi
