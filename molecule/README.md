@@ -49,6 +49,10 @@ Read this before changing anything under `molecule/`. Almost everything this fle
 
 `prepare.yml` records the value it found and `verify.yml` asserts the value the role left is at least 262144, reporting both. That is the honest boundary: the suite proves the parameter ended up high enough for OpenSearch, and it tells you what it was before, but it cannot prove the role was the one that raised it on a machine that was already above the threshold.
 
+The same shared-kernel property has a second consequence, and it is the one that will waste your afternoon. `geerlingguy/docker-ubuntu2604-ansible` ships systemd 259, which ships `/usr/lib/sysctl.d/55-map-count.conf` setting `vm.max_map_count=1048576`. `systemd-sysctl.service` applies that at container boot, and because the parameter is not namespaced, it lands on the shared kernel. On a CI runner, where this scenario's container is the only one, that happens once during `create` and the role overwrites it during `converge`, so `molecule test`'s idempotence step sees the role's own value and passes. On a workstation running several privileged systemd containers in parallel — several of this fleet's Molecule scenarios at once, say — every one of them that boots resets the parameter to 1048576 behind this scenario's back, `ansible.posix.sysctl` finds a value it did not set, and the idempotence step fails on `Ensure vm.max_map_count is set for OpenSearch` alone.
+
+That failure is an artifact of the machine, not of the role. If you hit it, run `molecule converge` followed by `molecule verify` instead of `molecule test`, or run this scenario on its own.
+
 If you run this suite locally, note the value first and restore it afterwards:
 
 ```bash

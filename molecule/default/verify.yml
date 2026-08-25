@@ -407,7 +407,6 @@
     - name: Assert the Wazuh dashboard container was created the way the role asked
       vars:
         dashboard: "{{ (wazuh_molecule_inspect.results[1].stdout | from_json) | first }}"
-        labels: "{{ (wazuh_molecule_inspect.results[1].stdout | from_json) | first }}"
       ansible.builtin.assert:
         that:
           - dashboard.Mounts | selectattr('Destination', 'equalto', '/molecule-extra/dashboard-marker.txt') | list | length == 1
