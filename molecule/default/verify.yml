@@ -182,9 +182,17 @@
         success_msg: "The indexer rejects a wrong admin password"
 
     # The image ships its own /usr/share/wazuh-indexer/config/opensearch.yml,
-    # which is a near-clone of what this role renders. `http.port` is one of
-    # the few settings that differs: the role asks for a range, the image's own
-    # file does not set it at all.
+    # which is a near-clone of what this role renders. The port ranges are the
+    # settings that tell them apart: the role asks for ranges, the image's own
+    # file does not set either one at all, so an indexer running the image's
+    # file would report the OpenSearch defaults of 9200 and 9300.
+    #
+    # The certificate paths would discriminate too - the image's file names
+    # `indexer.pem` where the role names `wazuh.indexer.pem` - but the security
+    # plugin redacts its own `plugins.security.*` settings from this endpoint.
+    # It does not need asserting: the role mounts only `wazuh.indexer.pem`, so
+    # an indexer running the image's file would not find a certificate at all
+    # and the cluster above could not have come up.
     - name: Read the settings the Wazuh indexer node is running with
       ansible.builtin.uri:
         url: "{{ wazuh_molecule_indexer_url }}/_nodes/_local/settings?flat_settings=true"
@@ -202,12 +210,10 @@
         that:
           - settings['http.port'] | default('') == '9200-9299'
           - settings['transport.tcp.port'] | default('') == '9300-9399'
-          - settings['plugins.security.ssl.http.pemcert_filepath'] | default('') == '/usr/share/wazuh-indexer/config/certs/wazuh.indexer.pem'
         fail_msg: >-
           The indexer is not running the settings this role renders.
           http.port={{ settings['http.port'] | default('<unset>') }}
           transport.tcp.port={{ settings['transport.tcp.port'] | default('<unset>') }}
-          pemcert_filepath={{ settings['plugins.security.ssl.http.pemcert_filepath'] | default('<unset>') }}
         success_msg: "The indexer is running the role's rendered opensearch.yml"
 
     ############################################################
