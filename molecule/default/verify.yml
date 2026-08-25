@@ -1,127 +1,460 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Verify Wazuh systemd service
+- name: Verify Wazuh
   hosts: all
   become: true
   gather_facts: false
+
+  vars:
+    wazuh_molecule_indexer_url: "https://127.0.0.1:9299"
+    wazuh_molecule_manager_api_url: "https://127.0.0.1:55099"
+    wazuh_molecule_dashboard_url: "http://127.0.0.1:5699"
+
   tasks:
-    - name: Wait for wazuh-indexer to become active (up to 180s)
+    # `wazuh_version` is a leaf literal, which is what makes reading it out of
+    # the role's own defaults legitimate here. It is read into a namespace of
+    # its own so that it cannot outrank anything this scenario tuned.
+    - name: Read the role's defaults
+      ansible.builtin.include_vars:
+        file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
+        name: wazuh_role_defaults
+
+    ############################################################
+    # Units and containers
+    #
+    # All three units carry `Restart=always`, so "active" says almost nothing
+    # on its own - a crash-looping container keeps its unit active. These are
+    # preconditions for the assertions further down, not evidence.
+    ############################################################
+
+    - name: Wait for the Wazuh units to become active
       ansible.builtin.systemd:
-        name: wazuh-indexer.service
-      register: indexer_service
-      until: indexer_service.status.ActiveState == 'active'
+        name: "{{ item }}.service"
+      register: wazuh_molecule_units
+      until: wazuh_molecule_units.status.ActiveState == 'active'
       retries: 36
       delay: 5
+      failed_when: false
+      loop:
+        - wazuh-indexer
+        - wazuh-manager
+        - wazuh-dashboard
 
-    - name: Assert wazuh-indexer is active
+    - name: Assert the Wazuh units are active
       ansible.builtin.assert:
-        that: indexer_service.status.ActiveState == 'active'
-        fail_msg: "wazuh-indexer.service not active ({{ indexer_service.status.ActiveState }})"
-        success_msg: "wazuh-indexer.service is active"
+        that: "wazuh_molecule_units.results | rejectattr('status.ActiveState', 'equalto', 'active') | list | length == 0"
+        fail_msg: >-
+          Not every Wazuh unit is active:
+          {{ wazuh_molecule_units.results | map(attribute='status.ActiveState') | list }}
+        success_msg: "All three Wazuh units are active"
 
-    - name: Wait for wazuh-manager to become active (up to 180s)
-      ansible.builtin.systemd:
-        name: wazuh-manager.service
-      register: manager_service
-      until: manager_service.status.ActiveState == 'active'
-      retries: 36
-      delay: 5
+    - name: Wait for the Wazuh containers to report a health verdict
+      ansible.builtin.command:
+        cmd: "docker container inspect --format {% raw %}'{{.State.Health.Status}}'{% endraw %} {{ item }}"
+      register: wazuh_molecule_health
+      until: wazuh_molecule_health.rc == 0 and wazuh_molecule_health.stdout | trim in ['healthy', 'unhealthy']
+      retries: 90
+      delay: 10
+      failed_when: false
+      changed_when: false
+      loop:
+        - wazuh-indexer
+        - wazuh-manager
+        - wazuh-dashboard
 
-    - name: Assert wazuh-manager is active
+    - name: Assert the Wazuh containers are healthy
       ansible.builtin.assert:
-        that: manager_service.status.ActiveState == 'active'
-        fail_msg: "wazuh-manager.service not active ({{ manager_service.status.ActiveState }})"
-        success_msg: "wazuh-manager.service is active"
+        that: "wazuh_molecule_health.results | map(attribute='stdout') | map('trim') | reject('equalto', 'healthy') | list | length == 0"
+        fail_msg: >-
+          Not every Wazuh container is healthy:
+          {{ dict(wazuh_molecule_health.results | map(attribute='item') | zip(wazuh_molecule_health.results | map(attribute='stdout') | map('trim'))) }}
+        success_msg: "All three Wazuh containers are healthy"
 
-    - name: Wait for wazuh-dashboard to become active (up to 180s)
-      ansible.builtin.systemd:
-        name: wazuh-dashboard.service
-      register: dashboard_service
-      until: dashboard_service.status.ActiveState == 'active'
-      retries: 36
-      delay: 5
+    ############################################################
+    # The running version is the version the role pins
+    #
+    # None of these images carry an OCI label, so the version is read from the
+    # running container rather than from image metadata.
+    ############################################################
 
-    - name: Assert wazuh-dashboard is active
+    - name: Read the version the Wazuh indexer container reports
+      ansible.builtin.command:
+        cmd: docker exec wazuh-indexer cat /usr/share/wazuh-indexer/VERSION.json
+      register: wazuh_molecule_indexer_version
+      changed_when: false
+
+    - name: Assert the Wazuh indexer runs the pinned version
       ansible.builtin.assert:
-        that: dashboard_service.status.ActiveState == 'active'
-        fail_msg: "wazuh-dashboard.service not active ({{ dashboard_service.status.ActiveState }})"
-        success_msg: "wazuh-dashboard.service is active"
+        that: "(wazuh_molecule_indexer_version.stdout | from_json).version == wazuh_role_defaults.wazuh_version"
+        fail_msg: >-
+          The indexer reports {{ (wazuh_molecule_indexer_version.stdout | from_json).version }},
+          the role pins {{ wazuh_role_defaults.wazuh_version }}
+        success_msg: "The indexer runs {{ wazuh_role_defaults.wazuh_version }}"
 
-    - name: Wait for wazuh-indexer container to become healthy (up to 5m)
-      community.docker.docker_container_info:
-        name: wazuh-indexer
-      register: indexer_info
-      until: >-
-        indexer_info.container is not none and
-        indexer_info.container.State.Health.Status in ['healthy', 'unhealthy']
-      retries: 60
-      delay: 5
+    - name: Read the version the Wazuh dashboard container reports
+      ansible.builtin.command:
+        cmd: docker exec wazuh-dashboard cat /usr/share/wazuh-dashboard/VERSION.json
+      register: wazuh_molecule_dashboard_version
+      changed_when: false
 
-    - name: Assert wazuh-indexer container is healthy
+    - name: Assert the Wazuh dashboard runs the pinned version
       ansible.builtin.assert:
-        that: indexer_info.container.State.Health.Status == 'healthy'
-        fail_msg: "wazuh-indexer container health: {{ indexer_info.container.State.Health.Status }}"
-        success_msg: "wazuh-indexer container is healthy"
+        that: "(wazuh_molecule_dashboard_version.stdout | from_json).version == wazuh_role_defaults.wazuh_version"
+        fail_msg: >-
+          The dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version }},
+          the role pins {{ wazuh_role_defaults.wazuh_version }}
+        success_msg: "The dashboard runs {{ wazuh_role_defaults.wazuh_version }}"
 
-    - name: Wait for wazuh-manager container to become healthy (up to 5m)
-      community.docker.docker_container_info:
-        name: wazuh-manager
-      register: manager_info
-      until: >-
-        manager_info.container is not none and
-        manager_info.container.State.Health.Status in ['healthy', 'unhealthy']
-      retries: 60
-      delay: 5
+    - name: Read the version the Wazuh manager reports
+      ansible.builtin.command:
+        cmd: docker exec wazuh-manager /var/ossec/bin/wazuh-control info
+      register: wazuh_molecule_manager_version
+      changed_when: false
 
-    - name: Assert wazuh-manager container is healthy
+    # The manager carries a leading `v` that the pinned value does not.
+    - name: Assert the Wazuh manager runs the pinned version
       ansible.builtin.assert:
-        that: manager_info.container.State.Health.Status == 'healthy'
-        fail_msg: "wazuh-manager container health: {{ manager_info.container.State.Health.Status }}"
-        success_msg: "wazuh-manager container is healthy"
+        that: "'WAZUH_VERSION=\"v' ~ wazuh_role_defaults.wazuh_version ~ '\"' in wazuh_molecule_manager_version.stdout"
+        fail_msg: >-
+          The manager reports {{ wazuh_molecule_manager_version.stdout | trim }},
+          the role pins {{ wazuh_role_defaults.wazuh_version }}
+        success_msg: "The manager runs v{{ wazuh_role_defaults.wazuh_version }}"
 
-    - name: Wait for wazuh-dashboard container to become healthy (up to 5m)
-      community.docker.docker_container_info:
-        name: wazuh-dashboard
-      register: dashboard_info
-      until: >-
-        dashboard_info.container is not none and
-        dashboard_info.container.State.Health.Status in ['healthy', 'unhealthy']
-      retries: 60
-      delay: 5
+    ############################################################
+    # The indexer
+    #
+    # An OpenSearch node answers on its HTTP port long before its cluster is
+    # usable, and it answers `/` without any authentication at all. What is
+    # asserted here is that the cluster reached a usable state AND that it
+    # accepts the password this scenario configured - which is only possible if
+    # the role's rendered internal_users.yml replaced the demo one the image
+    # ships (whose admin hash is for the well-known `SecretPassword`).
+    ############################################################
 
-    - name: Assert wazuh-dashboard container is healthy
-      ansible.builtin.assert:
-        that: dashboard_info.container.State.Health.Status == 'healthy'
-        fail_msg: "wazuh-dashboard container health: {{ dashboard_info.container.State.Health.Status }}"
-        success_msg: "wazuh-dashboard container is healthy"
-
-    - name: Wait for dashboard HTTP endpoint to respond (up to 120s)
+    - name: Wait for the Wazuh indexer cluster to become usable
       ansible.builtin.uri:
-        url: "http://localhost:{{ wazuh_dashboard_http_host_bind_port }}/app/login"
+        url: "{{ wazuh_molecule_indexer_url }}/_cluster/health"
         method: GET
+        url_username: admin
+        url_password: "{{ wazuh_indexer_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        return_content: true
+      register: wazuh_molecule_cluster_health
+      until: wazuh_molecule_cluster_health.status == 200 and wazuh_molecule_cluster_health.json.status in ['green', 'yellow']
+      retries: 60
+      delay: 5
+      failed_when: false
+
+    - name: Assert the Wazuh indexer cluster is usable and accepts the configured admin password
+      ansible.builtin.assert:
+        that:
+          - wazuh_molecule_cluster_health.status == 200
+          - wazuh_molecule_cluster_health.json.status in ['green', 'yellow']
+        fail_msg: >-
+          The indexer answered {{ wazuh_molecule_cluster_health.status }}
+          with cluster status {{ wazuh_molecule_cluster_health.json.status | default('unknown') }}
+        success_msg: >-
+          The indexer cluster is {{ wazuh_molecule_cluster_health.json.status | default('?') }}
+          and authenticated the configured admin password
+
+    # Without this, the assertion above could pass against an indexer that
+    # authenticates nobody at all.
+    - name: Ask the Wazuh indexer for cluster health with the wrong password
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_indexer_url }}/_cluster/health"
+        method: GET
+        url_username: admin
+        url_password: "not-{{ wazuh_indexer_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [401, 403]
+      register: wazuh_molecule_cluster_health_wrong_password
+
+    - name: Assert the Wazuh indexer rejects the wrong password
+      ansible.builtin.assert:
+        that: wazuh_molecule_cluster_health_wrong_password.status in [401, 403]
+        fail_msg: "The indexer answered {{ wazuh_molecule_cluster_health_wrong_password.status }} to a wrong password"
+        success_msg: "The indexer rejects a wrong admin password"
+
+    # The image ships its own /usr/share/wazuh-indexer/config/opensearch.yml,
+    # which is a near-clone of what this role renders. `http.port` is one of
+    # the few settings that differs: the role asks for a range, the image's own
+    # file does not set it at all.
+    - name: Read the settings the Wazuh indexer node is running with
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_indexer_url }}/_nodes/_local/settings?flat_settings=true"
+        method: GET
+        url_username: admin
+        url_password: "{{ wazuh_indexer_admin_password }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: wazuh_molecule_indexer_settings
+
+    - name: Assert the Wazuh indexer is running the role's rendered opensearch.yml
+      vars:
+        settings: "{{ (wazuh_molecule_indexer_settings.json.nodes.values() | list | first).settings }}"
+      ansible.builtin.assert:
+        that:
+          - settings['http.port'] | default('') == '9200-9299'
+          - settings['transport.tcp.port'] | default('') == '9300-9399'
+          - settings['plugins.security.ssl.http.pemcert_filepath'] | default('') == '/usr/share/wazuh-indexer/config/certs/wazuh.indexer.pem'
+        fail_msg: >-
+          The indexer is not running the settings this role renders.
+          http.port={{ settings['http.port'] | default('<unset>') }}
+          transport.tcp.port={{ settings['transport.tcp.port'] | default('<unset>') }}
+          pemcert_filepath={{ settings['plugins.security.ssl.http.pemcert_filepath'] | default('<unset>') }}
+        success_msg: "The indexer is running the role's rendered opensearch.yml"
+
+    ############################################################
+    # The manager
+    ############################################################
+
+    - name: Authenticate against the Wazuh manager API
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_manager_api_url }}/security/user/authenticate"
+        method: GET
+        url_username: "{{ wazuh_manager_api_username | default('wazuh-wui') }}"
+        url_password: "{{ wazuh_manager_api_password }}"
+        force_basic_auth: true
+        validate_certs: false
+      register: wazuh_molecule_manager_token
+      until: wazuh_molecule_manager_token.status == 200
+      retries: 30
+      delay: 5
+      failed_when: false
+
+    # The image's own default password for this account is a different one, so
+    # a token here proves API_PASSWORD from the role's rendered manager.env
+    # reached the process.
+    - name: Assert the Wazuh manager API accepts the configured password
+      ansible.builtin.assert:
+        that:
+          - wazuh_molecule_manager_token.status == 200
+          - wazuh_molecule_manager_token.json.data.token | default('') | length > 0
+        fail_msg: "The manager API answered {{ wazuh_molecule_manager_token.status }} to the configured credentials"
+        success_msg: "The manager API issued a token for the configured credentials"
+
+    - name: Ask the Wazuh manager API for a token with the wrong password
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_manager_api_url }}/security/user/authenticate"
+        method: GET
+        url_username: "{{ wazuh_manager_api_username | default('wazuh-wui') }}"
+        url_password: "not-{{ wazuh_manager_api_password }}"
+        force_basic_auth: true
+        validate_certs: false
+        status_code: [401, 403]
+      register: wazuh_molecule_manager_token_wrong_password
+
+    - name: Assert the Wazuh manager API rejects the wrong password
+      ansible.builtin.assert:
+        that: wazuh_molecule_manager_token_wrong_password.status in [401, 403]
+        fail_msg: "The manager API answered {{ wazuh_molecule_manager_token_wrong_password.status }} to a wrong password"
+        success_msg: "The manager API rejects a wrong password"
+
+    - name: Read the version the Wazuh manager API reports
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_manager_api_url }}/"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ wazuh_molecule_manager_token.json.data.token }}"
+        validate_certs: false
+      register: wazuh_molecule_manager_api_info
+
+    - name: Assert the Wazuh manager API reports the pinned version
+      ansible.builtin.assert:
+        that: "wazuh_molecule_manager_api_info.json.data.api_version | default('') == wazuh_role_defaults.wazuh_version"
+        fail_msg: >-
+          The manager API reports {{ wazuh_molecule_manager_api_info.json.data.api_version | default('<none>') }},
+          the role pins {{ wazuh_role_defaults.wazuh_version }}
+        success_msg: "The manager API reports {{ wazuh_role_defaults.wazuh_version }}"
+
+    # The running configuration, read back out of the process rather than off
+    # disk. `email_from` comes from this scenario's
+    # `wazuh_manager_ossec_xml_replacements_custom`, and `use_password` from
+    # the role's own default replacement reacting to `wazuh_enrollment_password`
+    # being set. The base wazuh_manager.conf this role ships says
+    # `wazuh@example.wazuh.com` and `no` respectively.
+    - name: Read the configuration the Wazuh manager is running with
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_manager_api_url }}/manager/configuration?section={{ item }}"
+        method: GET
+        headers:
+          Authorization: "Bearer {{ wazuh_molecule_manager_token.json.data.token }}"
+        validate_certs: false
+      register: wazuh_molecule_manager_running_config
+      loop:
+        - global
+        - auth
+
+    - name: Assert the Wazuh manager is running the role's rendered ossec.conf
+      vars:
+        running_config: "{{ wazuh_molecule_manager_running_config.results | map(attribute='json') | list | to_json }}"
+      ansible.builtin.assert:
+        that:
+          - "'molecule-wazuh@example.invalid' in running_config"
+          - "'wazuh@example.wazuh.com' not in running_config"
+          - "'\"use_password\": \"yes\"' in running_config"
+        fail_msg: "The manager is not running the ossec.conf this role rendered: {{ running_config }}"
+        success_msg: >-
+          The manager is running the role's XPath replacements
+          (a custom one, and use_password flipped by wazuh_enrollment_password)
+
+    - name: Read the manager-side files the role installs
+      ansible.builtin.command:
+        cmd: "docker exec wazuh-manager cat {{ item }}"
+      register: wazuh_molecule_manager_files
+      changed_when: false
+      loop:
+        - /var/ossec/etc/authd.pass
+        - /var/ossec/etc/shared/default/agent.conf
+        - /var/ossec/etc/rules/local_rules.xml
+        - /molecule-extra/manager-marker.txt
+
+    - name: Assert the manager-side files carry what the role was configured with
+      vars:
+        contents: "{{ dict(wazuh_molecule_manager_files.results | map(attribute='item') | zip(wazuh_molecule_manager_files.results | map(attribute='stdout'))) }}"
+      ansible.builtin.assert:
+        that:
+          - contents['/var/ossec/etc/authd.pass'] | trim == wazuh_enrollment_password
+          - "'i-052a1838c' in contents['/var/ossec/etc/shared/default/agent.conf']"
+          - "'rule id=\"100001\"' in contents['/var/ossec/etc/rules/local_rules.xml']"
+          - "'molecule-manager-marker-9f2c41' in contents['/molecule-extra/manager-marker.txt']"
+        fail_msg: "A manager-side file the role installs is missing or wrong: {{ contents }}"
+        success_msg: >-
+          The enrollment password, the remote agent configuration, the custom rule
+          and the additional volume all reached the manager container
+
+    - name: Read the custom integrations the role installs
+      ansible.builtin.command:
+        cmd: "docker exec wazuh-manager stat -c '%n %U %G %a' /var/ossec/integrations/custom-element /var/ossec/integrations/custom-element.py"
+      register: wazuh_molecule_manager_integrations
+      changed_when: false
+
+    # wazuh-integratord refuses to run an integration script that is not owned
+    # by root with group wazuh, which is what the role's defaults arrange for.
+    - name: Assert the custom integrations are installed the way wazuh-integratord needs
+      ansible.builtin.assert:
+        that:
+          - "'/var/ossec/integrations/custom-element root wazuh 750' in wazuh_molecule_manager_integrations.stdout"
+          - "'/var/ossec/integrations/custom-element.py root wazuh 750' in wazuh_molecule_manager_integrations.stdout"
+        fail_msg: "The custom integrations are not installed as root:wazuh 0750: {{ wazuh_molecule_manager_integrations.stdout }}"
+        success_msg: "The custom integrations are installed as root:wazuh 0750"
+
+    ############################################################
+    # The dashboard
+    #
+    # Established by hand against the image: with no configuration at all the
+    # dashboard exits before it listens, and with a configuration pointing at
+    # an indexer it cannot reach it answers 503 on every path, including
+    # /app/login. A 200 here therefore means it reached the indexer and
+    # finished its saved-object migrations.
+    ############################################################
+
+    - name: Wait for the Wazuh dashboard to answer
+      ansible.builtin.uri:
+        url: "{{ wazuh_molecule_dashboard_url }}/app/login"
+        method: GET
+        follow_redirects: none
         validate_certs: false
         status_code: 200
-      register: dashboard_http
-      until: dashboard_http.status == 200
-      retries: 24
+      register: wazuh_molecule_dashboard_http
+      until: wazuh_molecule_dashboard_http.status == 200
+      retries: 60
       delay: 5
+      failed_when: false
 
-    - name: Assert dashboard responds
+    - name: Assert the Wazuh dashboard answers on the port the role was configured with
       ansible.builtin.assert:
-        that: dashboard_http.status == 200
-        fail_msg: "Dashboard did not respond ({{ dashboard_http.status | default('no response') }})"
-        success_msg: "Dashboard responded with 200"
+        that: wazuh_molecule_dashboard_http.status == 200
+        fail_msg: >-
+          The dashboard answered {{ wazuh_molecule_dashboard_http.status | default('nothing') }}
+          on {{ wazuh_molecule_dashboard_url }}/app/login
+        success_msg: "The dashboard answers 200 on /app/login"
 
-    - name: Show Wazuh systemd services status summary
+    ############################################################
+    # What the systemd units asked Docker for
+    ############################################################
+
+    - name: Inspect the Wazuh containers
+      ansible.builtin.command:
+        cmd: "docker container inspect {{ item }}"
+      register: wazuh_molecule_inspect
+      changed_when: false
+      loop:
+        - wazuh-manager
+        - wazuh-dashboard
+
+    - name: Assert the Wazuh manager container was created the way the role asked
+      vars:
+        manager: "{{ (wazuh_molecule_inspect.results[0].stdout | from_json) | first }}"
+      ansible.builtin.assert:
+        that:
+          # The additional volume, with the option the documented shape carries
+          - manager.Mounts | selectattr('Destination', 'equalto', '/molecule-extra/manager-marker.txt') | list | length == 1
+          - not (manager.Mounts | selectattr('Destination', 'equalto', '/molecule-extra/manager-marker.txt') | list | first).RW
+          # The extra argument
+          - manager.Config.Labels['molecule.extra-argument'] | default('') == 'manager'
+          # The API port, published where the role was told to publish it
+          - manager.NetworkSettings.Ports['55000/tcp'] | default([]) | map(attribute='HostPort') | list == ['55099']
+        fail_msg: "The manager container was not created the way the role asked: {{ manager.Mounts }} {{ manager.Config.Labels }} {{ manager.NetworkSettings.Ports }}"
+        success_msg: "The manager container carries the additional volume read-only, the extra argument and the published API port"
+
+    - name: Assert the Wazuh dashboard container was created the way the role asked
+      vars:
+        dashboard: "{{ (wazuh_molecule_inspect.results[1].stdout | from_json) | first }}"
+        labels: "{{ (wazuh_molecule_inspect.results[1].stdout | from_json) | first }}"
+      ansible.builtin.assert:
+        that:
+          - dashboard.Mounts | selectattr('Destination', 'equalto', '/molecule-extra/dashboard-marker.txt') | list | length == 1
+          - not (dashboard.Mounts | selectattr('Destination', 'equalto', '/molecule-extra/dashboard-marker.txt') | list | first).RW
+          - dashboard.Config.Labels['molecule.extra-argument'] | default('') == 'dashboard'
+          # The container port is the one this scenario set, not the role's default 5601
+          - dashboard.NetworkSettings.Ports['5602/tcp'] | default([]) | map(attribute='HostPort') | list == ['5699']
+          # The Traefik network the unit's ExecStartPre connects to
+          - "'wazuh-molecule-traefik' in dashboard.NetworkSettings.Networks"
+          # The Traefik labels, including the port and the path prefix
+          - dashboard.Config.Labels['traefik.enable'] | default('') == 'true'
+          - dashboard.Config.Labels['traefik.http.routers.wazuh-dashboard.rule'] | default('') == 'Host(`wazuh.molecule.local`) && PathPrefix(`/wazuh`)'
+          - dashboard.Config.Labels['traefik.http.routers.wazuh-dashboard.priority'] | default('') == '4711'
+          - dashboard.Config.Labels['traefik.http.services.wazuh-dashboard.loadbalancer.server.port'] | default('') == '5602'
+          - dashboard.Config.Labels['traefik.http.middlewares.wazuh-dashboard-strip-prefix.stripprefix.prefixes'] | default('') == '/wazuh'
+          - dashboard.Config.Labels['traefik.docker.network'] | default('') == 'wazuh-molecule-traefik'
+        fail_msg: "The dashboard container was not created the way the role asked: {{ dashboard.Config.Labels }} {{ dashboard.NetworkSettings.Ports }}"
+        success_msg: "The dashboard container carries the Traefik labels, the additional volume, the extra argument and the published port"
+
+    ############################################################
+    # The one thing this suite changes outside the container
+    ############################################################
+
+    - name: Read vm.max_map_count as prepare.yml found it
+      ansible.builtin.slurp:
+        src: /molecule-extra/max-map-count-before.txt
+      register: wazuh_molecule_max_map_count_before
+
+    - name: Read vm.max_map_count as the role left it
+      ansible.builtin.command:
+        cmd: sysctl -n vm.max_map_count
+      register: wazuh_molecule_max_map_count_after
+      changed_when: false
+
+    # `vm.max_map_count` is not namespaced, so this reads the kernel of the
+    # machine running the suite. See molecule/README.md.
+    - name: Assert the role left vm.max_map_count high enough for OpenSearch
+      ansible.builtin.assert:
+        that: wazuh_molecule_max_map_count_after.stdout | trim | int >= 262144
+        fail_msg: "vm.max_map_count is {{ wazuh_molecule_max_map_count_after.stdout | trim }}, which OpenSearch refuses to start under"
+        success_msg: >-
+          vm.max_map_count is {{ wazuh_molecule_max_map_count_after.stdout | trim }}
+          (it was {{ wazuh_molecule_max_map_count_before.content | b64decode | trim }} before the role ran)
+
+    - name: Summarize the Wazuh verification
       ansible.builtin.debug:
         msg:
-          - "wazuh-indexer systemd: {{ indexer_service.status.ActiveState }}"
-          - "wazuh-manager systemd: {{ manager_service.status.ActiveState }}"
-          - "wazuh-dashboard systemd: {{ dashboard_service.status.ActiveState }}"
-          - "wazuh-indexer health: {{ indexer_info.container.State.Health.Status }}"
-          - "wazuh-manager health: {{ manager_info.container.State.Health.Status }}"
-          - "wazuh-dashboard health: {{ dashboard_info.container.State.Health.Status }}"
-          - "dashboard HTTP: {{ dashboard_http.status }}"
+          - "indexer:   {{ wazuh_role_defaults.wazuh_version }}, cluster {{ wazuh_molecule_cluster_health.json.status }}"
+          - "manager:   {{ wazuh_molecule_manager_api_info.json.data.api_version }}, API authenticated"
+          - "dashboard: {{ wazuh_role_defaults.wazuh_version }}, HTTP {{ wazuh_molecule_dashboard_http.status }} on /app/login"

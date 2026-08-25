@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -24,7 +25,9 @@
   become: true
   gather_facts: false
   tasks:
-    # This seems needed due to molecule timing out in Github Actions
+    # The indexer is a JVM that takes longer to report readiness than systemd's
+    # default start timeout allows for on a busy CI runner. verify.yml is what
+    # decides whether the stack actually came up.
     - name: Set TimeoutStartSec=0 for Wazuh services
       changed_when: false # Do not mark as changed to avoid the idempotency failure
       ansible.builtin.lineinfile:
@@ -41,24 +44,18 @@
       ansible.builtin.systemd_service:
         daemon_reload: true
 
-    - name: Ensure wazuh-indexer systemd service is started
+    - name: Ensure Wazuh systemd services are started
       ansible.builtin.systemd_service:
-        name: wazuh-indexer.service
+        name: "{{ item }}.service"
         state: started
-
-    - name: Ensure wazuh-manager systemd service is started
-      ansible.builtin.systemd_service:
-        name: wazuh-manager.service
-        state: started
-
-    - name: Ensure wazuh-dashboard systemd service is started
-      ansible.builtin.systemd_service:
-        name: wazuh-dashboard.service
-        state: started
+      loop:
+        - wazuh-indexer
+        - wazuh-manager
+        - wazuh-dashboard
 
     # Set state to absent so
     # "Ensure Wazuh * systemd service is installed" tasks do not have idempotency failures
-    - name: Set TimeoutStartSec=0 for Wazuh services
+    - name: Unset TimeoutStartSec=0 for Wazuh services
       changed_when: false # Do not mark as changed to avoid the idempotency failure
       ansible.builtin.lineinfile:
         state: absent

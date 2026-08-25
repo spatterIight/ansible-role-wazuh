@@ -2,6 +2,7 @@
 galaxy_info:
   author: spatterlight
   role_name: wazuh
+  namespace: mash
   description: An Ansible role for installing Wazuh, an open-source security platform
   platforms:
     - name: Debian
