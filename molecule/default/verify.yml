@@ -106,7 +106,7 @@
         fail_msg: "Wazuh dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version | default('none') }}, expected {{ wazuh_defaults.wazuh_version }}"
         success_msg: "Wazuh dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version }}"
 
-    - name: Read the version the Wazuh manager reports
+    - name: Query the version of the running Wazuh manager
       ansible.builtin.command:
         cmd: docker exec wazuh-manager /var/ossec/bin/wazuh-control info
       register: wazuh_molecule_manager_version
