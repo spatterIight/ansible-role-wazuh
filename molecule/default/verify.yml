@@ -15,10 +15,10 @@
     wazuh_molecule_dashboard_url: "http://127.0.0.1:5699"
 
   tasks:
-    # `wazuh_version` is a leaf literal, which is what makes reading it out of
-    # the role's own defaults legitimate here. It is read into a namespace of
-    # its own so that it cannot outrank anything this scenario tuned.
-    - name: Read the role's defaults
+    # The role is not included in this playbook, so its defaults are not in
+    # scope. Reading defaults/main.yml directly ties the version assertion
+    # below.
+    - name: Load the role defaults
       ansible.builtin.include_vars:
         file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
         name: wazuh_role_defaults
