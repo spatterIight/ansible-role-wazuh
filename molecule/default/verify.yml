@@ -1,5 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
+# SPDX-FileCopyrightText: 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
@@ -458,9 +459,9 @@
           vm.max_map_count is {{ wazuh_molecule_max_map_count_after.stdout | trim }}
           (it was {{ wazuh_molecule_max_map_count_before.content | b64decode | trim }} before the role ran)
 
-    - name: Summarize the Wazuh verification
+    - name: Show the Wazuh verification summary
       ansible.builtin.debug:
         msg:
-          - "indexer:   {{ wazuh_role_defaults.wazuh_version }}, cluster {{ wazuh_molecule_cluster_health.json.status }}"
-          - "manager:   {{ wazuh_molecule_manager_api_info.json.data.api_version }}, API authenticated"
-          - "dashboard: {{ wazuh_role_defaults.wazuh_version }}, HTTP {{ wazuh_molecule_dashboard_http.status }} on /app/login"
+          - "Wazuh indexer: {{ wazuh_role_defaults.wazuh_version }}, cluster {{ wazuh_molecule_cluster_health.json.status }}"
+          - "Wazuh manager: {{ wazuh_molecule_manager_api_info.json.data.api_version }}, API authenticated"
+          - "Wazuhdashboard: {{ wazuh_role_defaults.wazuh_version }}, HTTP {{ wazuh_molecule_dashboard_http.status }} on /app/login"
