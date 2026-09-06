@@ -57,7 +57,7 @@ ExecStartPre={{ devture_systemd_docker_base_host_command_docker }} create \
       --memory-swap={{ wazuh_dashboard_container_memory_swap_limit }} \
       {% endif %}
       {% for volume in wazuh_dashboard_container_additional_volumes %}
-      --mount type=bind,src={{ volume.src }},dst={{ volume.dst }}{{ (',readonly' if volume.readonly | default(false) else '') }} \
+      --mount type={{ volume.type | default('bind' if '/' in volume.src else 'volume') }},src={{ volume.src }},dst={{ volume.dst }}{{ (',' + volume.options) if volume.options | default('') else (',readonly' if volume.readonly | default(false) else '') }} \
       {% endfor %}
       --health-cmd="{{ wazuh_dashboard_container_health_cmd }}" \
       --health-interval={{ wazuh_dashboard_container_health_interval }} \

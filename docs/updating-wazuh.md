@@ -239,12 +239,12 @@ Preserve these intentional divergences:
 just prek-run-on-all
 ```
 
-Then run both Molecule scenarios, which converge against fresh containers and therefore
-exercise certificate generation end to end (see `molecule/README.md` for venv setup):
+Then run the Molecule scenario, which converges against a fresh container and therefore
+exercises certificate generation end to end (see `molecule/README.md` for venv setup, and
+for the one kernel parameter the suite changes on the machine it runs on):
 
 ```sh
 molecule test --scenario-name default
-molecule test --scenario-name features
 ```
 
 Deploy against a test host; check `journalctl -u wazuh-manager -u wazuh-indexer -u wazuh-dashboard`

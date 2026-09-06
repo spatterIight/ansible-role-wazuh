@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -17,8 +18,12 @@
     - name: Ensure required packages are installed for Wazuh Molecule tests preparation
       ansible.builtin.package:
         name:
+          # `ansible.builtin.uri` in verify.yml
           - python3-requests
+          # `community.general.xml` in tasks/install_manager.yml
           - python3-lxml
+          # The storage driver configured below
+          - fuse-overlayfs
         state: present
 
     - name: Ensure Docker is installed for Wazuh Molecule tests preparation
@@ -26,4 +31,64 @@
         name: ansible-role-docker
       vars:
         docker_daemon_options:
-          storage-driver: vfs
+          # This scenario pulls four container images totalling roughly 2.5 GB
+          # compressed. `vfs`, which this scenario used to ask for, unpacks
+          # every layer of every image as a full copy; `fuse-overlayfs` shares
+          # them the way the real storage driver would, and is the difference
+          # between a job that takes half an hour and one that takes minutes.
+          storage-driver: fuse-overlayfs
+
+    # The dashboard's systemd unit runs `docker network connect <network>` as
+    # an ExecStartPre when Traefik labels are enabled. The role deliberately
+    # does not create that network (it belongs to the reverse proxy), so the
+    # scenario has to.
+    - name: Ensure the Traefik container network exists for Wazuh Molecule tests
+      ansible.builtin.command:
+        cmd: docker network create wazuh-molecule-traefik
+      register: wazuh_molecule_traefik_network_result
+      changed_when: wazuh_molecule_traefik_network_result.rc == 0
+      failed_when: >-
+        wazuh_molecule_traefik_network_result.rc != 0
+        and 'already exists' not in wazuh_molecule_traefik_network_result.stderr
+
+    - name: Ensure the additional-volume marker directory exists for Wazuh Molecule tests
+      ansible.builtin.file:
+        path: /molecule-extra
+        state: directory
+        mode: "0755"
+        owner: root
+        group: root
+
+    # Each marker carries a value that appears nowhere in the role, so finding
+    # it inside a container proves the mount carried this file and not some
+    # path the role would have mounted anyway.
+    - name: Ensure the additional-volume markers exist for Wazuh Molecule tests
+      ansible.builtin.copy:
+        content: "{{ item.content }}\n"
+        dest: "{{ item.path }}"
+        mode: "0644"
+        owner: root
+        group: root
+      loop:
+        - path: /molecule-extra/manager-marker.txt
+          content: molecule-manager-marker-9f2c41
+        - path: /molecule-extra/dashboard-marker.txt
+          content: molecule-dashboard-marker-6b8e07
+
+    # `tasks/install_indexer.yml` raises vm.max_map_count, which is a property
+    # of the kernel this container shares with the machine running the suite.
+    # Recording it here is what lets verify.yml say whether the role raised it
+    # or merely found it high enough already. See molecule/README.md.
+    - name: Record vm.max_map_count before the Wazuh role runs
+      ansible.builtin.command:
+        cmd: sysctl -n vm.max_map_count
+      register: wazuh_molecule_max_map_count_before
+      changed_when: false
+
+    - name: Store vm.max_map_count for verify.yml
+      ansible.builtin.copy:
+        content: "{{ wazuh_molecule_max_map_count_before.stdout | trim }}\n"
+        dest: /molecule-extra/max-map-count-before.txt
+        mode: "0644"
+        owner: root
+        group: root
