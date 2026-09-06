@@ -88,13 +88,11 @@
       register: wazuh_molecule_indexer_version
       changed_when: false
 
-    - name: Assert the Wazuh indexer runs the pinned version
+    - name: Assert the running Wazuh indexer is the version this role installs
       ansible.builtin.assert:
         that: "(wazuh_molecule_indexer_version.stdout | from_json).version == wazuh_defaults.wazuh_version"
-        fail_msg: >-
-          The indexer reports {{ (wazuh_molecule_indexer_version.stdout | from_json).version }},
-          the role pins {{ wazuh_defaults.wazuh_version }}
-        success_msg: "The indexer runs {{ wazuh_defaults.wazuh_version }}"
+        fail_msg: "Wazuh indexer reports {{ (wazuh_molecule_indexer_version.stdout | from_json).version | default('none') }}, expected {{ wazuh_defaults.wazuh_version }}"
+        success_msg: "Wazuh indexer reports {{ (wazuh_molecule_indexer_version.stdout | from_json).version }}"
 
     - name: Read the version the Wazuh dashboard container reports
       ansible.builtin.command:
@@ -102,13 +100,11 @@
       register: wazuh_molecule_dashboard_version
       changed_when: false
 
-    - name: Assert the Wazuh dashboard runs the pinned version
+    - name: Assert the running Wazuh dashboard is the version this role installs
       ansible.builtin.assert:
         that: "(wazuh_molecule_dashboard_version.stdout | from_json).version == wazuh_defaults.wazuh_version"
-        fail_msg: >-
-          The dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version }},
-          the role pins {{ wazuh_defaults.wazuh_version }}
-        success_msg: "The dashboard runs {{ wazuh_defaults.wazuh_version }}"
+        fail_msg: "Wazuh dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version | default('none') }}, expected {{ wazuh_defaults.wazuh_version }}"
+        success_msg: "Wazuh dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version }}"
 
     - name: Read the version the Wazuh manager reports
       ansible.builtin.command:
@@ -118,13 +114,11 @@
 
     # Wazuh manager reports its version with a leading `v` (`v2.1.3`), while the
     # role variable does not carry one.
-    - name: Assert the Wazuh manager runs the pinned version
+    - name: Assert the running Wazuh manager is the version this role installs
       ansible.builtin.assert:
         that: "'WAZUH_VERSION=\"v' ~ wazuh_defaults.wazuh_version ~ '\"' in wazuh_molecule_manager_version.stdout"
-        fail_msg: >-
-          The manager reports {{ wazuh_molecule_manager_version.stdout | trim }},
-          the role pins {{ wazuh_defaults.wazuh_version }}
-        success_msg: "The manager runs v{{ wazuh_defaults.wazuh_version }}"
+        fail_msg: "Wazuh manager reports {{ wazuh_molecule_manager_version.stdout | default('none') }}, expected {{ wazuh_defaults.wazuh_version }}"
+        success_msg: "Wazuh manager reports {{ wazuh_molecule_manager_version.stdout }}"
 
     ############################################################
     # The indexer
