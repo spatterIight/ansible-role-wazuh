@@ -22,7 +22,7 @@
     - name: Load the role defaults
       ansible.builtin.include_vars:
         file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
-        name: wazuh_role_defaults
+        name: wazuh_defaults
 
     ############################################################
     # Units and containers
@@ -90,11 +90,11 @@
 
     - name: Assert the Wazuh indexer runs the pinned version
       ansible.builtin.assert:
-        that: "(wazuh_molecule_indexer_version.stdout | from_json).version == wazuh_role_defaults.wazuh_version"
+        that: "(wazuh_molecule_indexer_version.stdout | from_json).version == wazuh_defaults.wazuh_version"
         fail_msg: >-
           The indexer reports {{ (wazuh_molecule_indexer_version.stdout | from_json).version }},
-          the role pins {{ wazuh_role_defaults.wazuh_version }}
-        success_msg: "The indexer runs {{ wazuh_role_defaults.wazuh_version }}"
+          the role pins {{ wazuh_defaults.wazuh_version }}
+        success_msg: "The indexer runs {{ wazuh_defaults.wazuh_version }}"
 
     - name: Read the version the Wazuh dashboard container reports
       ansible.builtin.command:
@@ -104,11 +104,11 @@
 
     - name: Assert the Wazuh dashboard runs the pinned version
       ansible.builtin.assert:
-        that: "(wazuh_molecule_dashboard_version.stdout | from_json).version == wazuh_role_defaults.wazuh_version"
+        that: "(wazuh_molecule_dashboard_version.stdout | from_json).version == wazuh_defaults.wazuh_version"
         fail_msg: >-
           The dashboard reports {{ (wazuh_molecule_dashboard_version.stdout | from_json).version }},
-          the role pins {{ wazuh_role_defaults.wazuh_version }}
-        success_msg: "The dashboard runs {{ wazuh_role_defaults.wazuh_version }}"
+          the role pins {{ wazuh_defaults.wazuh_version }}
+        success_msg: "The dashboard runs {{ wazuh_defaults.wazuh_version }}"
 
     - name: Read the version the Wazuh manager reports
       ansible.builtin.command:
@@ -120,11 +120,11 @@
     # role variable does not carry one.
     - name: Assert the Wazuh manager runs the pinned version
       ansible.builtin.assert:
-        that: "'WAZUH_VERSION=\"v' ~ wazuh_role_defaults.wazuh_version ~ '\"' in wazuh_molecule_manager_version.stdout"
+        that: "'WAZUH_VERSION=\"v' ~ wazuh_defaults.wazuh_version ~ '\"' in wazuh_molecule_manager_version.stdout"
         fail_msg: >-
           The manager reports {{ wazuh_molecule_manager_version.stdout | trim }},
-          the role pins {{ wazuh_role_defaults.wazuh_version }}
-        success_msg: "The manager runs v{{ wazuh_role_defaults.wazuh_version }}"
+          the role pins {{ wazuh_defaults.wazuh_version }}
+        success_msg: "The manager runs v{{ wazuh_defaults.wazuh_version }}"
 
     ############################################################
     # The indexer
@@ -275,11 +275,11 @@
 
     - name: Assert the Wazuh manager API reports the pinned version
       ansible.builtin.assert:
-        that: "wazuh_molecule_manager_api_info.json.data.api_version | default('') == wazuh_role_defaults.wazuh_version"
+        that: "wazuh_molecule_manager_api_info.json.data.api_version | default('') == wazuh_defaults.wazuh_version"
         fail_msg: >-
           The manager API reports {{ wazuh_molecule_manager_api_info.json.data.api_version | default('<none>') }},
-          the role pins {{ wazuh_role_defaults.wazuh_version }}
-        success_msg: "The manager API reports {{ wazuh_role_defaults.wazuh_version }}"
+          the role pins {{ wazuh_defaults.wazuh_version }}
+        success_msg: "The manager API reports {{ wazuh_defaults.wazuh_version }}"
 
     # The running configuration, read back out of the process rather than off
     # disk. `email_from` comes from this scenario's
@@ -462,6 +462,6 @@
     - name: Show the Wazuh verification summary
       ansible.builtin.debug:
         msg:
-          - "Wazuh indexer: {{ wazuh_role_defaults.wazuh_version }}, cluster {{ wazuh_molecule_cluster_health.json.status }}"
+          - "Wazuh indexer: {{ wazuh_defaults.wazuh_version }}, cluster {{ wazuh_molecule_cluster_health.json.status }}"
           - "Wazuh manager: {{ wazuh_molecule_manager_api_info.json.data.api_version }}, API authenticated"
-          - "Wazuhdashboard: {{ wazuh_role_defaults.wazuh_version }}, HTTP {{ wazuh_molecule_dashboard_http.status }} on /app/login"
+          - "Wazuhdashboard: {{ wazuh_defaults.wazuh_version }}, HTTP {{ wazuh_molecule_dashboard_http.status }} on /app/login"
