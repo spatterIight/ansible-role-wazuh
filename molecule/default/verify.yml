@@ -115,7 +115,8 @@
       register: wazuh_molecule_manager_version
       changed_when: false
 
-    # The manager carries a leading `v` that the pinned value does not.
+    # Wazuh manager reports its version with a leading `v` (`v2.1.3`), while the
+    # role variable does not carry one.
     - name: Assert the Wazuh manager runs the pinned version
       ansible.builtin.assert:
         that: "'WAZUH_VERSION=\"v' ~ wazuh_role_defaults.wazuh_version ~ '\"' in wazuh_molecule_manager_version.stdout"
