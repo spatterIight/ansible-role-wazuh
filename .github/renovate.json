@@ -5,7 +5,7 @@
     "Repository tooling (GitHub Actions, prek hooks, pip and Galaxy dependencies) is automerged on a branch by the shared preset, gated on the Molecule run."
   ],
   "extends": [
-    "github>mother-of-all-self-hosting/renovate-config#v1.0.0"
+    "github>mother-of-all-self-hosting/renovate-config#v1.1.0"
   ],
   "packageRules": [
     {
