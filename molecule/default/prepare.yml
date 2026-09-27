@@ -22,7 +22,9 @@
           - python3-requests
           # `community.general.xml` in tasks/install_manager.yml
           - python3-lxml
-          # The storage driver configured below
+          # The storage driver below. Docker in a container cannot use the
+          # host's overlayfs, and fuse-overlayfs is several times faster than
+          # falling back to vfs.
           - fuse-overlayfs
         state: present
 
@@ -31,11 +33,9 @@
         name: ansible-role-docker
       vars:
         docker_daemon_options:
-          # This scenario pulls four container images totalling roughly 2.5 GB
-          # compressed. `vfs`, which this scenario used to ask for, unpacks
-          # every layer of every image as a full copy; `fuse-overlayfs` shares
-          # them the way the real storage driver would, and is the difference
-          # between a job that takes half an hour and one that takes minutes.
+          # `vfs` makes a full copy of every layer. The Wazuh image is large
+          # enough for that to dominate the run - `fuse-overlayfs` gives the same
+          # nested-container isolation without the copying.
           storage-driver: fuse-overlayfs
 
     # The dashboard's systemd unit runs `docker network connect <network>` as
